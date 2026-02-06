@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import type { Theme, ThemeMode, ThemeContextValue } from './types';
 import { getEffectiveTheme, applyTheme, getSavedMode, saveMode, watchSystemTheme } from './theme';
 

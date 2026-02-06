@@ -22,7 +22,7 @@ export default function BackfillDialog({ agentId, onClose, onSuccess }: Backfill
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [backfillStatus, setBackfillStatus] = useState<BackfillStatus | null>(null);
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Cleanup polling on unmount
   useEffect(() => {
@@ -42,7 +42,14 @@ export default function BackfillDialog({ agentId, onClose, onSuccess }: Backfill
     const poll = async () => {
       try {
         const status = await agentsApi.getBackfillStatus(agentId, jobId);
-        setBackfillStatus(status);
+        setBackfillStatus({
+          jobId: status.jobId,
+          status: status.status as 'pending' | 'processing' | 'completed' | 'failed',
+          totalVideos: status.totalVideos,
+          processedVideos: status.processedVideos,
+          enqueuedVideos: status.enqueuedVideos,
+          error: status.error || null,
+        });
 
         // Stop polling if completed or failed
         if (status.status === 'completed' || status.status === 'failed') {

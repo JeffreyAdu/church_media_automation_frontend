@@ -5,7 +5,7 @@ import { useUpdateAgent } from '../hooks/useAgents';
 import type { Agent, UpdateAgentInput } from '../../../shared/types';
 
 const schema = z.object({
-  name: z.string().min(1, 'Name is required'),
+  name: z.string().min(1, 'Name is required').optional(),
   podcast_title: z.string().optional(),
   podcast_description: z.string().optional(),
   podcast_author: z.string().optional(),
