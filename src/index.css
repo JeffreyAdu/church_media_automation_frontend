@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+/* Import theme system */
+@import "./shared/theme/tokens.css";
+@import "./shared/theme/themes.css";
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "rlig" 1, "calt" 1;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
