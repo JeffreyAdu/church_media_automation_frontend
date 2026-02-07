@@ -114,3 +114,13 @@ export const useUploadOutro = () => {
     },
   });
 };
+
+// Get backfill jobs
+export const useBackfillJobs = (id: string) => {
+  return useQuery({
+    queryKey: [...agentKeys.detail(id), 'backfillJobs'],
+    queryFn: () => agentsApi.getAgentBackfillJobs(id),
+    enabled: !!id,
+    refetchInterval: 5000, // Auto-refresh every 5 seconds
+  });
+};

@@ -113,6 +113,22 @@ export const agentsApi = {
     const { data } = await apiClient.get(`/agents/${id}/backfill/${jobId}`);
     return data;
   },
+
+  // Get all backfill jobs for agent
+  getAgentBackfillJobs: async (id: string): Promise<Array<{
+    jobId: string;
+    status: string;
+    totalVideos: number;
+    processedVideos: number;
+    enqueuedVideos: number;
+    error: string | null;
+    createdAt: string;
+    updatedAt: string;
+  }>> => {
+    const { data } = await apiClient.get(`/agents/${id}/backfill`);
+    return data;
+  },
+
   // Get total episode count
   getEpisodeCount: async (): Promise<number> => {
     const { data } = await apiClient.get('/stats/dashboard');

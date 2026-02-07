@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useAgent, useAgentEpisodes, useUploadArtwork, useUploadIntro, useUploadOutro, useDeleteAgent } from '../hooks/useAgents';
+import { useAgent, useAgentEpisodes, useUploadArtwork, useUploadIntro, useUploadOutro, useDeleteAgent, useBackfillJobs } from '../hooks/useAgents';
 import FileUpload from '../components/FileUpload';
 import RssFeedDisplay from '../components/RssFeedDisplay';
 import AgentEditForm from '../components/AgentEditForm';
@@ -21,9 +21,20 @@ export default function AgentDetails() {
   
   const { data: agent, isLoading, error, refetch } = useAgent(id!);
   const { data: episodesData, refetch: refetchEpisodes } = useAgentEpisodes(id!);
+  const { data: backfillJobs } = useBackfillJobs(id!);
   
   // Safely extract episodes array from response
   const episodes = Array.isArray(episodesData) ? episodesData : [];
+
+  // Track active jobs from the hook
+  useEffect(() => {
+    if (backfillJobs) {
+      const activeJobs = backfillJobs
+        .filter((job: any) => job.status === 'pending' || job.status === 'processing')
+        .map((job: any) => job.jobId);
+      setActiveJobIds(activeJobs);
+    }
+  }, [backfillJobs]);
 
   // Auto-refresh episodes when there are active jobs
   useEffect(() => {
