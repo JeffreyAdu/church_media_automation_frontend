@@ -1,8 +1,8 @@
-import { useQuery } from 'react-query';
-import axios from 'axios';
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '../../../shared/utils/api';
 
 async function fetchDashboardStats() {
-  const res = await axios.get('/stats/dashboard');
+  const res = await apiClient.get('/stats/dashboard');
   return res.data;
 }
 
