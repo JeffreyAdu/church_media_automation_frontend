@@ -304,14 +304,21 @@ export default function AgentDetails() {
             </div>
 
             {/* Processing status banners */}
-            {activeJobIds.map((jobId) => (
-              <ProcessingStatus
-                key={jobId}
-                agentId={agent.id}
-                jobId={jobId}
-                onComplete={() => handleJobComplete(jobId)}
-              />
-            ))}
+            {activeJobIds.length > 0 && (
+              <div className="mb-4 space-y-2">
+                <div className="text-sm text-gray-600 font-medium">
+                  {activeJobIds.length === 1 ? 'Import in progress' : `${activeJobIds.length} imports in progress`}
+                </div>
+                {activeJobIds.map((jobId) => (
+                  <ProcessingStatus
+                    key={jobId}
+                    agentId={agent.id}
+                    jobId={jobId}
+                    onComplete={() => handleJobComplete(jobId)}
+                  />
+                ))}
+              </div>
+            )}
 
             {episodes.length === 0 ? (
               <div className="text-center py-12 text-gray-500">

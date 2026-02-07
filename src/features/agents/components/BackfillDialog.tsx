@@ -217,11 +217,20 @@ export default function BackfillDialog({ agentId, onClose, onSuccess }: Backfill
                 <div className="flex items-center gap-2 text-blue-600">
                   <Loader2 className="h-5 w-5 animate-spin" />
                   <span className="font-semibold">
-                    {backfillStatus.status === 'pending' ? 'Queued...' : 'Processing...'}
+                    {backfillStatus.status === 'pending' ? 'Queued...' : 
+                     backfillStatus.totalVideos === 0 ? 'Fetching videos from YouTube...' : 'Processing...'}
                   </span>
                 </div>
               )}
             </div>
+
+            {/* Progress message for long operations */}
+            {backfillStatus.status === 'processing' && backfillStatus.totalVideos === 0 && (
+              <div className="text-center text-sm text-gray-600 py-2">
+                <p>Scanning YouTube channel for videos...</p>
+                <p className="text-xs text-gray-500 mt-1">This may take a minute for large channels</p>
+              </div>
+            )}
 
             {/* Progress bar */}
             {backfillStatus.totalVideos > 0 && (
