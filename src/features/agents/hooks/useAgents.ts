@@ -124,3 +124,26 @@ export const useBackfillJobs = (id: string) => {
     refetchInterval: 5000, // Auto-refresh every 5 seconds
   });
 };
+
+// Start backfill mutation
+export const useStartBackfill = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, date }: { id: string; date: string }) =>
+      agentsApi.backfillVideos(id, date),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [...agentKeys.detail(variables.id), 'backfillJobs'] });
+    },
+  });
+};
+
+// Get backfill status
+export const useBackfillStatus = (agentId: string, jobId: string | null, enabled: boolean = true) => {
+  return useQuery({
+    queryKey: [...agentKeys.detail(agentId), 'backfillStatus', jobId],
+    queryFn: () => agentsApi.getBackfillStatus(agentId, jobId!),
+    enabled: !!agentId && !!jobId && enabled,
+    refetchInterval: 2000, // Poll every 2 seconds
+  });
+};

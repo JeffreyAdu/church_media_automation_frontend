@@ -1,103 +1,35 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { Calendar, Loader2, X, CheckCircle } from 'lucide-react';
-import { agentsApi } from '../api/agentsApi';
-
-interface BackfillDialogProps {
-  agentId: string;
-  onClose: () => void;
-  onSuccess: (jobId: string) => void;
-}
 
 interface BackfillStatus {
   jobId: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+ status: 'pending' | 'processing' | 'completed' | 'failed';
   totalVideos: number;
   processedVideos: number;
   enqueuedVideos: number;
   error: string | null;
 }
 
-export default function BackfillDialog({ agentId, onClose, onSuccess }: BackfillDialogProps) {
+interface BackfillDialogProps {
+  onClose: () => void;
+  onSubmit: (date: string) => Promise<void>;
+  backfillStatus: BackfillStatus | null;
+  isSubmitting: boolean;
+  submitError: string | null;
+}
+
+export default function BackfillDialog({
+  onClose,
+  onSubmit,
+  backfillStatus,
+  isSubmitting,
+  submitError,
+}: BackfillDialogProps) {
   const [date, setDate] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [backfillStatus, setBackfillStatus] = useState<BackfillStatus | null>(null);
-  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // Cleanup polling on unmount
-  useEffect(() => {
-    return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-      }
-    };
-  }, []);
-
-  // Poll for status updates
-  const startPolling = (jobId: string) => {
-    if (pollIntervalRef.current) {
-      clearInterval(pollIntervalRef.current);
-    }
-
-    const poll = async () => {
-      try {
-        const status = await agentsApi.getBackfillStatus(agentId, jobId);
-        setBackfillStatus({
-          jobId: status.jobId,
-          status: status.status as 'pending' | 'processing' | 'completed' | 'failed',
-          totalVideos: status.totalVideos,
-          processedVideos: status.processedVideos,
-          enqueuedVideos: status.enqueuedVideos,
-          error: status.error || null,
-        });
-
-        // Stop polling if completed or failed
-        if (status.status === 'completed' || status.status === 'failed') {
-          if (pollIntervalRef.current) {
-            clearInterval(pollIntervalRef.current);
-            pollIntervalRef.current = null;
-          }
-
-          if (status.status === 'completed') {
-            onSuccess(status.jobId);
-          } else if (status.error) {
-            setError(status.error);
-          }
-        }
-      } catch (err: any) {
-        console.error('Failed to poll status:', err);
-        // Don't stop polling on transient errors
-      }
-    };
-
-    // Poll immediately then every 2 seconds
-    poll();
-    pollIntervalRef.current = setInterval(poll, 2000);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    setLoading(true);
-
-    try {
-      const result = await agentsApi.backfillVideos(agentId, date);
-      
-      // Start polling for status
-      setBackfillStatus({
-        jobId: result.jobId,
-        status: result.status as any,
-        totalVideos: 0,
-        processedVideos: 0,
-        enqueuedVideos: 0,
-        error: null,
-      });
-      
-      startPolling(result.jobId);
-    } catch (err: any) {
-      setError(err.message || 'Failed to start backfill');
-      setLoading(false);
-    }
+    await onSubmit(date);
   };
 
   const getProgressPercentage = () => {
@@ -159,19 +91,19 @@ export default function BackfillDialog({ agentId, onClose, onSuccess }: Backfill
                 </p>
               </div>
 
-              {error && (
+              {submitError && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
-                  {error}
+                  {submitError}
                 </div>
               )}
 
               <div className="flex gap-3 pt-2">
                 <button
                   type="submit"
-                  disabled={loading || !date}
+                  disabled={isSubmitting || !date}
                   className="flex-1 inline-flex items-center justify-center px-4 py-2.5 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {loading ? (
+                  {isSubmitting ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       Starting...

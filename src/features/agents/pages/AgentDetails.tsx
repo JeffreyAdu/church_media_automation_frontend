@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useAgent, useAgentEpisodes, useUploadArtwork, useUploadIntro, useUploadOutro, useDeleteAgent, useBackfillJobs } from '../hooks/useAgents';
+import { useAgent, useAgentEpisodes, useUploadArtwork, useUploadIntro, useUploadOutro, useDeleteAgent, useBackfillJobs, useStartBackfill, useBackfillStatus } from '../hooks/useAgents';
 import FileUpload from '../components/FileUpload';
 import RssFeedDisplay from '../components/RssFeedDisplay';
 import AgentEditForm from '../components/AgentEditForm';
@@ -18,10 +18,13 @@ export default function AgentDetails() {
   const [showBackfill, setShowBackfill] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [activeJobIds, setActiveJobIds] = useState<string[]>([]);
+  const [currentBackfillJobId, setCurrentBackfillJobId] = useState<string | null>(null);
   
   const { data: agent, isLoading, error, refetch } = useAgent(id!);
   const { data: episodesData, refetch: refetchEpisodes } = useAgentEpisodes(id!);
   const { data: backfillJobs } = useBackfillJobs(id!);
+  const startBackfill = useStartBackfill();
+  const { data: backfillStatus } = useBackfillStatus(id!, currentBackfillJobId, !!currentBackfillJobId);
   
   // Safely extract episodes array from response
   const episodes = Array.isArray(episodesData) ? episodesData : [];
@@ -55,6 +58,24 @@ export default function AgentDetails() {
   const handleBackfillStart = (jobId: string) => {
     setActiveJobIds((prev) => [...prev, jobId]);
   };
+
+  const handleBackfillSubmit = async (date: string) => {
+    const result = await startBackfill.mutateAsync({ id: id!, date });
+    setCurrentBackfillJobId(result.jobId);
+    handleBackfillStart(result.jobId);
+  };
+
+  // Close backfill dialog when completed
+  useEffect(() => {
+    if (backfillStatus && (backfillStatus.status === 'completed' || backfillStatus.status === 'failed')) {
+      if (backfillStatus.status === 'completed') {
+        setShowBackfill(false);
+        setCurrentBackfillJobId(null);
+        refetch();
+        refetchEpisodes();
+      }
+    }
+  }, [backfillStatus, refetch, refetchEpisodes]);
   
   const uploadArtwork = useUploadArtwork();
   const uploadIntro = useUploadIntro();
@@ -384,14 +405,21 @@ export default function AgentDetails() {
 
       {showBackfill && (
         <BackfillDialog
-          agentId={agent.id}
-          onClose={() => setShowBackfill(false)}
-          onSuccess={(jobId) => {
+          onClose={() => {
             setShowBackfill(false);
-            handleBackfillStart(jobId);
-            refetch();
-            refetchEpisodes();
+            setCurrentBackfillJobId(null);
           }}
+          onSubmit={handleBackfillSubmit}
+          backfillStatus={backfillStatus ? {
+            jobId: backfillStatus.jobId,
+            status: backfillStatus.status as any,
+            totalVideos: backfillStatus.totalVideos,
+            processedVideos: backfillStatus.processedVideos,
+            enqueuedVideos: backfillStatus.enqueuedVideos,
+            error: backfillStatus.error || null,
+          } : null}
+          isSubmitting={startBackfill.isPending}
+          submitError={startBackfill.error?.message || null}
         />
       )}
 
