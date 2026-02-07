@@ -5,7 +5,7 @@ import { agentsApi } from '../api/agentsApi';
 interface BackfillDialogProps {
   agentId: string;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (jobId: string) => void;
 }
 
 interface BackfillStatus {
@@ -59,7 +59,7 @@ export default function BackfillDialog({ agentId, onClose, onSuccess }: Backfill
           }
 
           if (status.status === 'completed') {
-            onSuccess();
+            onSuccess(status.jobId);
           } else if (status.error) {
             setError(status.error);
           }

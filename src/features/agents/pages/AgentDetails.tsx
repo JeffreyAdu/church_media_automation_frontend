@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAgent, useAgentEpisodes, useUploadArtwork, useUploadIntro, useUploadOutro, useDeleteAgent } from '../hooks/useAgents';
 import FileUpload from '../components/FileUpload';
@@ -6,6 +6,7 @@ import RssFeedDisplay from '../components/RssFeedDisplay';
 import AgentEditForm from '../components/AgentEditForm';
 import SetupChecklist from '../components/SetupChecklist';
 import BackfillDialog from '../components/BackfillDialog';
+import ProcessingStatus from '../components/ProcessingStatus';
 import { ArrowLeft, Settings, FileAudio, Radio, Rss, Calendar, Trash2, AlertTriangle } from 'lucide-react';
 
 type TabType = 'overview' | 'media' | 'episodes' | 'rss';
@@ -16,12 +17,32 @@ export default function AgentDetails() {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [showBackfill, setShowBackfill] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [activeJobIds, setActiveJobIds] = useState<string[]>([]);
   
   const { data: agent, isLoading, error, refetch } = useAgent(id!);
   const { data: episodesData, refetch: refetchEpisodes } = useAgentEpisodes(id!);
   
   // Safely extract episodes array from response
   const episodes = Array.isArray(episodesData) ? episodesData : [];
+
+  // Auto-refresh episodes when there are active jobs
+  useEffect(() => {
+    if (activeJobIds.length > 0) {
+      const interval = setInterval(() => {
+        refetchEpisodes();
+      }, 5000); // Refresh every 5 seconds
+      return () => clearInterval(interval);
+    }
+  }, [activeJobIds, refetchEpisodes]);
+
+  const handleJobComplete = (jobId: string) => {
+    setActiveJobIds((prev) => prev.filter((id) => id !== jobId));
+    refetchEpisodes();
+  };
+
+  const handleBackfillStart = (jobId: string) => {
+    setActiveJobIds((prev) => [...prev, jobId]);
+  };
   
   const uploadArtwork = useUploadArtwork();
   const uploadIntro = useUploadIntro();
@@ -260,6 +281,17 @@ export default function AgentDetails() {
                 Import Historical Videos
               </button>
             </div>
+
+            {/* Processing status banners */}
+            {activeJobIds.map((jobId) => (
+              <ProcessingStatus
+                key={jobId}
+                agentId={agent.id}
+                jobId={jobId}
+                onComplete={() => handleJobComplete(jobId)}
+              />
+            ))}
+
             {episodes.length === 0 ? (
               <div className="text-center py-12 text-gray-500">
                 No episodes yet. Episodes will appear here when videos are processed.
@@ -269,18 +301,16 @@ export default function AgentDetails() {
                 {episodes.map((episode) => (
                   <div
                     key={episode.id}
-                    className="flex items-start justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
+                    className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow"
                   >
-                    <div className="flex-1">
-                      <h3 className="font-medium text-gray-900">{episode.title}</h3>
-                      <p className="text-sm text-gray-600 mt-1 line-clamp-2">{episode.description}</p>
-                      <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                        <span>{new Date(episode.published_at).toLocaleDateString()}</span>
-                        {episode.duration_seconds && (
-                          <span>{Math.floor(episode.duration_seconds / 60)} minutes</span>
-                        )}
+                    <div className="p-4">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-900 mb-1">{episode.title}</h3>
+                          <p className="text-sm text-gray-600 line-clamp-2">{episode.description}</p>
+                        </div>
                         <span
-                          className={`px-2 py-1 rounded-full ${
+                          className={`ml-4 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
                             episode.is_published
                               ? 'bg-green-100 text-green-700'
                               : 'bg-gray-100 text-gray-700'
@@ -289,9 +319,30 @@ export default function AgentDetails() {
                           {episode.is_published ? 'Published' : 'Draft'}
                         </span>
                       </div>
+                      <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                        <span>📅 {new Date(episode.published_at).toLocaleDateString()}</span>
+                        {episode.duration_seconds && (
+                          <span>⏱️ {Math.floor(episode.duration_seconds / 60)} min</span>
+                        )}
+                        <a
+                          href={episode.youtube_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-700"
+                        >
+                          🎥 YouTube
+                        </a>
+                      </div>
                     </div>
                     {episode.audio_url && (
-                      <audio src={episode.audio_url} controls className="ml-4" />
+                      <div className="px-4 pb-4">
+                        <audio
+                          src={episode.audio_url}
+                          controls
+                          className="w-full"
+                          preload="metadata"
+                        />
+                      </div>
                     )}
                   </div>
                 ))}
@@ -307,7 +358,9 @@ export default function AgentDetails() {
         <BackfillDialog
           agentId={agent.id}
           onClose={() => setShowBackfill(false)}
-          onSuccess={() => {
+          onSuccess={(jobId) => {
+            setShowBackfill(false);
+            handleBackfillStart(jobId);
             refetch();
             refetchEpisodes();
           }}
