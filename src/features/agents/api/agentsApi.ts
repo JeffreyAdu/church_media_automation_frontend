@@ -106,6 +106,16 @@ export const agentsApi = {
     totalVideos: number;
     processedVideos: number;
     enqueuedVideos: number;
+    failedVideos: Array<{
+      videoId: string;
+      title: string;
+      reason: string;
+    }>;
+    activeVideos?: Array<{
+      videoId: string;
+      progress: number;
+      status: string;
+    }>;
     error: string | null;
     createdAt: string;
     updatedAt: string;

@@ -27,7 +27,7 @@ export interface Episode {
   audio_size_bytes: number;
   duration_seconds?: number;
   published_at: string;
-  is_published: boolean;
+  published: boolean;
   created_at: string;
 }
 

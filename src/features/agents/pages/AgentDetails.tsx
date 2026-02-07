@@ -31,7 +31,8 @@ export default function AgentDetails() {
     if (backfillJobs) {
       const activeJobs = backfillJobs
         .filter((job: any) => job.status === 'pending' || job.status === 'processing')
-        .map((job: any) => job.jobId);
+        .map((job: any) => job.jobId)
+        .filter((jobId): jobId is string => !!jobId); // Remove undefined values
       setActiveJobIds(activeJobs);
     }
   }, [backfillJobs]);
@@ -281,9 +282,18 @@ export default function AgentDetails() {
         {activeTab === 'episodes' && (
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">
-                Episodes ({episodes?.length || 0})
-              </h2>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 mb-1">
+                  Episodes ({episodes?.length || 0})
+                </h2>
+                {episodes.length > 0 && (
+                  <p className="text-sm text-gray-600">
+                    <span className="text-green-600 font-medium">{episodes.filter(ep => ep.published).length} Published</span>
+                    {" • "}
+                    <span className="text-gray-500">{episodes.filter(ep => !ep.published).length} Draft</span>
+                  </p>
+                )}
+              </div>
               <button
                 onClick={() => setShowBackfill(true)}
                 className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors"
@@ -322,12 +332,12 @@ export default function AgentDetails() {
                         </div>
                         <span
                           className={`ml-4 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
-                            episode.is_published
+                            episode.published
                               ? 'bg-green-100 text-green-700'
-                              : 'bg-gray-100 text-gray-700'
+                              : 'bg-yellow-100 text-yellow-700'
                           }`}
                         >
-                          {episode.is_published ? 'Published' : 'Draft'}
+                          {episode.published ? '✓ Published' : '📋 Draft'}
                         </span>
                       </div>
                       <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">

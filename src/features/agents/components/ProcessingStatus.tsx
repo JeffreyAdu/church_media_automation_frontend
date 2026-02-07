@@ -15,6 +15,16 @@ interface JobStatus {
   processedVideos: number;
   enqueuedVideos: number;
   error: string | null;
+  failedVideos: Array<{
+    videoId: string;
+    title: string;
+    reason: string;
+  }>;
+  activeVideos?: Array<{
+    videoId: string;
+    progress: number;
+    status: string;
+  }>;
 }
 
 export default function ProcessingStatus({ agentId, jobId, onComplete }: ProcessingStatusProps) {
@@ -31,6 +41,8 @@ export default function ProcessingStatus({ agentId, jobId, onComplete }: Process
           totalVideos: result.totalVideos,
           processedVideos: result.processedVideos,
           enqueuedVideos: result.enqueuedVideos,
+          failedVideos: result.failedVideos || [],
+          activeVideos: result.activeVideos,
           error: result.error || null,
         };
         
@@ -173,6 +185,48 @@ export default function ProcessingStatus({ agentId, jobId, onComplete }: Process
       {status.error && (
         <div className="mt-3 text-sm text-red-700 bg-red-100 rounded p-2">
           {status.error}
+        </div>
+      )}
+
+      {status.activeVideos && status.activeVideos.length > 0 && (
+        <div className="mt-4 space-y-2">
+          <div className="text-xs font-semibold text-gray-700 mb-2">Currently Processing:</div>
+          {status.activeVideos.map((video) => (
+            <div key={video.videoId} className="bg-white rounded-lg p-3 border border-gray-200">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-mono text-gray-600">{video.videoId}</span>
+                <span className="text-xs font-semibold text-blue-600">{video.progress}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
+                <div
+                  className="h-1.5 bg-blue-600 rounded-full transition-all duration-300"
+                  style={{ width: `${video.progress}%` }}
+                />
+              </div>
+              <div className="text-xs text-gray-500">{video.status}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {status.failedVideos && status.failedVideos.length > 0 && (
+        <div className="mt-4 space-y-2">
+          <div className="text-xs font-semibold text-red-700 mb-2">
+            ⚠️ Failed Videos ({status.failedVideos.length}):
+          </div>
+          {status.failedVideos.map((video) => (
+            <div key={video.videoId} className="bg-red-50 rounded-lg p-3 border border-red-200">
+              <div className="flex items-start justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium text-gray-900 truncate">{video.title}</div>
+                  <div className="text-xs text-gray-500 font-mono mt-1">{video.videoId}</div>
+                </div>
+                <span className="ml-2 px-2 py-1 bg-red-100 text-red-700 text-xs rounded whitespace-nowrap">
+                  {video.reason}
+                </span>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
