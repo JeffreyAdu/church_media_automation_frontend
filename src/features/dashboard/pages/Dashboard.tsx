@@ -1,14 +1,17 @@
 import { useAgents } from '../../agents/hooks/useAgents';
 import { Radio, FileAudio } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useDashboardStats } from '../hooks/dashboardHooks';
 
 export default function Dashboard() {
   const { data: agents, isLoading } = useAgents();
+  const { data: stats, isLoading: statsLoading } = useDashboardStats();
 
-  if (isLoading) {
+  if (isLoading || statsLoading) {
     return <div>Loading...</div>;
   }
 
-  const totalEpisodes = 0; // We'll calculate this later
+  const totalEpisodes = stats?.totalEpisodes ?? 0;
 
   return (
     <div className="space-y-6">
