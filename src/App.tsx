@@ -4,7 +4,7 @@ import { AuthProvider } from './shared/contexts/AuthContext';
 import ProtectedRoute from './shared/components/ProtectedRoute';
 import { RedirectAgentDetail } from './shared/components/RedirectAgentDetail';
 import Layout from './shared/components/Layout';
-import Dashboard from './features/dashboard/pages/Dashboard';
+import Dashboard from './features/agents/pages/Dashboard';
 import AgentsList from './features/agents/pages/AgentsList';
 import AgentDetails from './features/agents/pages/AgentDetails';
 import CreateAgent from './features/agents/pages/CreateAgent';

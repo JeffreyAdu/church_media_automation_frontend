@@ -113,4 +113,9 @@ export const agentsApi = {
     const { data } = await apiClient.get(`/agents/${id}/backfill/${jobId}`);
     return data;
   },
+  // Get total episode count
+  getEpisodeCount: async (): Promise<number> => {
+    const { data } = await apiClient.get('/stats/dashboard');
+    return data.totalEpisodes ?? 0;
+  },
 };

@@ -1,12 +1,12 @@
-import { useAgents } from '../../agents/hooks/useAgents';
+import { useAgents } from '../hooks/useAgents';
+import { useEpisodeCount } from '../hooks/useEpisodeCount';
 import { Radio, FileAudio } from 'lucide-react';
-import { useDashboardStats } from '../hooks/dashboardHooks';
 
 export default function Dashboard() {
   const { data: agents, isLoading } = useAgents();
-  const { data: stats, isLoading: statsLoading } = useDashboardStats();
+  const { data: episodeCount, isLoading: episodeCountLoading } = useEpisodeCount();
 
-  if (isLoading || statsLoading) {
+  if (isLoading || episodeCountLoading) {
     return <div>Loading...</div>;
   }
 
@@ -35,7 +35,7 @@ export default function Dashboard() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Total Episodes</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">{stats?.totalEpisodes ?? 0}</p>
+              <p className="text-3xl font-bold text-gray-900 mt-2">{episodeCount ?? 0}</p>
             </div>
             <div className="p-3 bg-green-100 rounded-lg">
               <FileAudio className="h-6 w-6 text-green-600" />
