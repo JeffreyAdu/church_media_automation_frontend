@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { agentsApi } from '../api/agentsApi';
 import type { CreateAgentInput, UpdateAgentInput } from '../../../shared/types';
@@ -146,4 +147,39 @@ export const useBackfillStatus = (agentId: string, jobId: string | null, enabled
     enabled: !!agentId && !!jobId && enabled,
     refetchInterval: 2000, // Poll every 2 seconds
   });
+};
+
+// Combined backfill manager hook
+export const useBackfillManager = (agentId: string) => {
+  const queryClient = useQueryClient();
+  const [currentJobId, setCurrentJobId] = useState<string | null>(null);
+
+  const { data: backfillJobs = [] } = useBackfillJobs(agentId);
+  const startBackfill = useStartBackfill();
+  const { data: currentJobStatus } = useBackfillStatus(agentId, currentJobId, !!currentJobId);
+
+  // Get active job IDs
+  const activeJobIds = backfillJobs
+    .filter((job: any) => job.status === 'pending' || job.status === 'processing')
+    .map((job: any) => job.jobId)
+    .filter((jobId): jobId is string => !!jobId);
+
+  const handleStartBackfill = async (date: string) => {
+    const result = await startBackfill.mutateAsync({ id: agentId, date });
+    setCurrentJobId(result.jobId);
+    return result.jobId;
+  };
+
+  const resetCurrentJob = () => setCurrentJobId(null);
+
+  return {
+    backfillJobs,
+    activeJobIds,
+    currentJobId,
+    currentJobStatus,
+    startBackfill: handleStartBackfill,
+    isStarting: startBackfill.isPending,
+    startError: startBackfill.error?.message || null,
+    resetCurrentJob,
+  };
 };

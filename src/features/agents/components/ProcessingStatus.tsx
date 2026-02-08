@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Loader2, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Clock, ChevronDown, ChevronUp } from 'lucide-react';
 import { agentsApi } from '../api/agentsApi';
 
 interface ProcessingStatusProps {
@@ -29,6 +29,7 @@ interface JobStatus {
 
 export default function ProcessingStatus({ agentId, jobId, onComplete }: ProcessingStatusProps) {
   const [status, setStatus] = useState<JobStatus | null>(null);
+  const [showDetails, setShowDetails] = useState(false);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -141,99 +142,135 @@ export default function ProcessingStatus({ agentId, jobId, onComplete }: Process
   };
 
   return (
-    <div className={`border rounded-lg p-4 mb-4 ${getStatusColor()}`}>
-      <div className="flex items-center justify-between mb-3">
+    <div className={`border rounded-lg p-6 mb-4 ${getStatusColor()}`}>
+      {/* Header with icon and status */}
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           {getStatusIcon()}
-          <span className={`font-semibold ${getTextColor()}`}>
-            {getStatusText()}
-          </span>
+          <div>
+            <h3 className={`font-semibold ${getTextColor()}`}>
+              {getStatusText()}
+            </h3>
+            {status.totalVideos > 0 && status.status === 'processing' && (
+              <p className="text-sm text-gray-600 mt-0.5">
+                {status.activeVideos?.length || 0} videos processing now...
+              </p>
+            )}
+          </div>
         </div>
         {status.totalVideos > 0 && (
-          <span className={`text-sm ${getTextColor()}`}>
-            {status.processedVideos} / {status.totalVideos}
-          </span>
+          <div className="text-right">
+            <div className={`text-2xl font-bold ${getTextColor()}`}>
+              {status.processedVideos}<span className="text-lg text-gray-500">/{status.totalVideos}</span>
+            </div>
+            <div className="text-xs text-gray-600">completed</div>
+          </div>
         )}
       </div>
 
+      {/* Progress bar */}
       {status.totalVideos > 0 && status.status !== 'completed' && (
-        <div className="mb-3">
-          <div className="w-full bg-white rounded-full h-2 overflow-hidden">
+        <div className="mb-4">
+          <div className="w-full bg-white rounded-full h-3 overflow-hidden shadow-inner">
             <div
-              className="h-2 bg-blue-600 transition-all duration-300"
+              className="h-3 bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-500 ease-out rounded-full"
               style={{ width: `${getProgressPercentage()}%` }}
             />
           </div>
-        </div>
-      )}
-
-      <div className="grid grid-cols-3 gap-3 text-center">
-        <div>
-          <div className={`text-lg font-bold ${getTextColor()}`}>{status.totalVideos}</div>
-          <div className="text-xs text-gray-600">Found</div>
-        </div>
-        <div>
-          <div className={`text-lg font-bold ${getTextColor()}`}>{status.enqueuedVideos}</div>
-          <div className="text-xs text-gray-600">Queued</div>
-        </div>
-        <div>
-          <div className={`text-lg font-bold ${getTextColor()}`}>{status.processedVideos}</div>
-          <div className="text-xs text-gray-600">Processed</div>
-        </div>
-      </div>
-
-      {status.error && (
-        <div className="mt-3 text-sm text-red-700 bg-red-100 rounded p-2">
-          {status.error}
-        </div>
-      )}
-
-      {status.activeVideos && status.activeVideos.length > 0 && (
-        <div className="mt-4 space-y-2">
-          <div className="text-xs font-semibold text-gray-700 mb-2">Currently Processing:</div>
-          {status.activeVideos.map((video) => (
-            <div key={video.videoId} className="bg-white rounded-lg p-3 border border-gray-200">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-mono text-gray-600">{video.videoId}</span>
-                <span className="text-xs font-semibold text-blue-600">{video.progress}%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
-                <div
-                  className="h-1.5 bg-blue-600 rounded-full transition-all duration-300"
-                  style={{ width: `${video.progress}%` }}
-                />
-              </div>
-              <div className="text-xs text-gray-500">{video.status}</div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {status.failedVideos && status.failedVideos.length > 0 && (
-        <div className="mt-4 space-y-2">
-          <div className="text-xs font-semibold text-red-700 mb-2">
-            ⚠️ Failed Videos ({status.failedVideos.length}):
+          <div className="flex justify-between mt-1.5 text-xs text-gray-600">
+            <span>{getProgressPercentage()}% complete</span>
+            <span>{status.totalVideos - status.processedVideos} remaining</span>
           </div>
-          {status.failedVideos.map((video) => (
-            <div key={video.videoId} className="bg-red-50 rounded-lg p-3 border border-red-200">
-              <div className="flex items-start justify-between">
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-medium text-gray-900 truncate">{video.title}</div>
-                  <div className="text-xs text-gray-500 font-mono mt-1">{video.videoId}</div>
-                </div>
-                <span className="ml-2 px-2 py-1 bg-red-100 text-red-700 text-xs rounded whitespace-nowrap">
-                  {video.reason}
-                </span>
-              </div>
-            </div>
-          ))}
         </div>
       )}
 
-      {status.status === 'processing' && (
-        <p className="mt-3 text-xs text-gray-600">
-          💡 Episodes will appear below as they finish processing. This may take a few minutes per video.
+      {/* Error display */}
+      {status.error && (
+        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg border border-red-200">
+          <strong>Error:</strong> {status.error}
+        </div>
+      )}
+
+      {/* Helpful message */}
+      {status.status === 'processing' && status.totalVideos > 0 && (
+        <p className="text-sm text-gray-600 mb-4">
+          💡 New episodes will appear below as they complete. Videos take 5-15 minutes each to process.
         </p>
+      )}
+
+      {/* Details section (collapsible) */}
+      {(status.activeVideos?.length > 0 || status.failedVideos?.length > 0) && (
+        <div className="mt-4 border-t border-gray-300 pt-4">
+          <button
+            onClick={() => setShowDetails(!showDetails)}
+            className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+          >
+            {showDetails ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            <span>
+              {showDetails ? 'Hide' : 'Show'} processing details
+              {status.failedVideos?.length > 0 && ` (${status.failedVideos.length} failed)`}
+            </span>
+          </button>
+
+          {showDetails && (
+            <div className="mt-4 space-y-3">
+              {/* Active videos */}
+              {status.activeVideos && status.activeVideos.length > 0 && (
+                <div>
+                  <div className="text-xs font-semibold text-gray-700 mb-2">
+                    ⏳ Currently Processing:
+                  </div>
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {status.activeVideos.slice(0, 3).map((video) => (
+                      <div key={video.videoId} className="bg-white rounded-lg p-3 border border-gray-200">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-mono text-gray-500">{video.videoId}</span>
+                          <span className="text-xs font-semibold text-blue-600">{video.progress}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-1.5 mb-2">
+                          <div
+                            className="h-1.5 bg-blue-600 rounded-full transition-all duration-300"
+                            style={{ width: `${video.progress}%` }}
+                          />
+                        </div>
+                        <div className="text-xs text-gray-600">{video.status}</div>
+                      </div>
+                    ))}
+                    {status.activeVideos.length > 3 && (
+                      <p className="text-xs text-gray-500 text-center py-2">
+                        + {status.activeVideos.length - 3} more videos processing...
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Failed videos */}
+              {status.failedVideos && status.failedVideos.length > 0 && (
+                <div>
+                  <div className="text-xs font-semibold text-red-700 mb-2">
+                    ⚠️ Failed Videos ({status.failedVideos.length}):
+                  </div>
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {status.failedVideos.map((video) => (
+                      <div key={video.videoId} className="bg-red-50 rounded-lg p-3 border border-red-200">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0 pr-3">
+                            <div className="text-sm font-medium text-gray-900 truncate">{video.title}</div>
+                            <div className="text-xs text-gray-500 font-mono mt-1">{video.videoId}</div>
+                          </div>
+                          <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded whitespace-nowrap">
+                            {video.reason}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

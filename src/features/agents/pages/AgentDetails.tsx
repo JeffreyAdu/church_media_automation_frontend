@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useAgent, useAgentEpisodes, useUploadArtwork, useUploadIntro, useUploadOutro, useDeleteAgent, useBackfillJobs, useStartBackfill, useBackfillStatus } from '../hooks/useAgents';
+import { useAgent, useAgentEpisodes, useUploadArtwork, useUploadIntro, useUploadOutro, useDeleteAgent, useBackfillManager } from '../hooks/useAgents';
 import FileUpload from '../components/FileUpload';
 import RssFeedDisplay from '../components/RssFeedDisplay';
 import AgentEditForm from '../components/AgentEditForm';
@@ -17,65 +17,48 @@ export default function AgentDetails() {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [showBackfill, setShowBackfill] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [activeJobIds, setActiveJobIds] = useState<string[]>([]);
-  const [currentBackfillJobId, setCurrentBackfillJobId] = useState<string | null>(null);
   
   const { data: agent, isLoading, error, refetch } = useAgent(id!);
   const { data: episodesData, refetch: refetchEpisodes } = useAgentEpisodes(id!);
-  const { data: backfillJobs } = useBackfillJobs(id!);
-  const startBackfill = useStartBackfill();
-  const { data: backfillStatus } = useBackfillStatus(id!, currentBackfillJobId, !!currentBackfillJobId);
+  const backfillManager = useBackfillManager(id!);
   
   // Safely extract episodes array from response
   const episodes = Array.isArray(episodesData) ? episodesData : [];
 
-  // Track active jobs from the hook
-  useEffect(() => {
-    if (backfillJobs) {
-      const activeJobs = backfillJobs
-        .filter((job: any) => job.status === 'pending' || job.status === 'processing')
-        .map((job: any) => job.jobId)
-        .filter((jobId): jobId is string => !!jobId); // Remove undefined values
-      setActiveJobIds(activeJobs);
-    }
-  }, [backfillJobs]);
-
   // Auto-refresh episodes when there are active jobs
   useEffect(() => {
-    if (activeJobIds.length > 0) {
+    if (backfillManager.activeJobIds.length > 0) {
       const interval = setInterval(() => {
         refetchEpisodes();
-      }, 5000); // Refresh every 5 seconds
+      }, 5000);
       return () => clearInterval(interval);
     }
-  }, [activeJobIds, refetchEpisodes]);
+  }, [backfillManager.activeJobIds, refetchEpisodes]);
 
-  const handleJobComplete = (jobId: string) => {
-    setActiveJobIds((prev) => prev.filter((id) => id !== jobId));
+  const handleJobComplete = () => {
+    refetch();
     refetchEpisodes();
   };
 
-  const handleBackfillStart = (jobId: string) => {
-    setActiveJobIds((prev) => [...prev, jobId]);
-  };
-
   const handleBackfillSubmit = async (date: string) => {
-    const result = await startBackfill.mutateAsync({ id: id!, date });
-    setCurrentBackfillJobId(result.jobId);
-    handleBackfillStart(result.jobId);
+    await backfillManager.startBackfill(date);
   };
 
-  // Close backfill dialog when completed
+  // Close dialog when completed
   useEffect(() => {
-    if (backfillStatus && (backfillStatus.status === 'completed' || backfillStatus.status === 'failed')) {
-      if (backfillStatus.status === 'completed') {
-        setShowBackfill(false);
-        setCurrentBackfillJobId(null);
-        refetch();
-        refetchEpisodes();
-      }
+    const status = backfillManager.currentJobStatus;
+    if (status && status.status === 'completed') {
+      setShowBackfill(false);
+      backfillManager.resetCurrentJob();
+      refetch();
+      refetchEpisodes();
     }
-  }, [backfillStatus, refetch, refetchEpisodes]);
+  }, [backfillManager.currentJobStatus]);
+
+  // Debug log
+  useEffect(() => {
+    console.log('Active backfill jobs:', backfillManager.backfillJobs);
+  }, [backfillManager.backfillJobs]);
   
   const uploadArtwork = useUploadArtwork();
   const uploadIntro = useUploadIntro();
@@ -325,17 +308,17 @@ export default function AgentDetails() {
             </div>
 
             {/* Processing status banners */}
-            {activeJobIds.length > 0 && (
+            {backfillManager.activeJobIds.length > 0 && (
               <div className="mb-4 space-y-2">
                 <div className="text-sm text-gray-600 font-medium">
-                  {activeJobIds.length === 1 ? 'Import in progress' : `${activeJobIds.length} imports in progress`}
+                  {backfillManager.activeJobIds.length === 1 ? 'Import in progress' : `${backfillManager.activeJobIds.length} imports in progress`}
                 </div>
-                {activeJobIds.map((jobId) => (
+                {backfillManager.activeJobIds.map((jobId) => (
                   <ProcessingStatus
                     key={jobId}
                     agentId={agent.id}
                     jobId={jobId}
-                    onComplete={() => handleJobComplete(jobId)}
+                    onComplete={handleJobComplete}
                   />
                 ))}
               </div>
@@ -407,19 +390,19 @@ export default function AgentDetails() {
         <BackfillDialog
           onClose={() => {
             setShowBackfill(false);
-            setCurrentBackfillJobId(null);
+            backfillManager.resetCurrentJob();
           }}
           onSubmit={handleBackfillSubmit}
-          backfillStatus={backfillStatus ? {
-            jobId: backfillStatus.jobId,
-            status: backfillStatus.status as any,
-            totalVideos: backfillStatus.totalVideos,
-            processedVideos: backfillStatus.processedVideos,
-            enqueuedVideos: backfillStatus.enqueuedVideos,
-            error: backfillStatus.error || null,
+          backfillStatus={backfillManager.currentJobStatus ? {
+            jobId: backfillManager.currentJobStatus.jobId,
+            status: backfillManager.currentJobStatus.status as any,
+            totalVideos: backfillManager.currentJobStatus.totalVideos,
+            processedVideos: backfillManager.currentJobStatus.processedVideos,
+            enqueuedVideos: backfillManager.currentJobStatus.enqueuedVideos,
+            error: backfillManager.currentJobStatus.error || null,
           } : null}
-          isSubmitting={startBackfill.isPending}
-          submitError={startBackfill.error?.message || null}
+          isSubmitting={backfillManager.isStarting}
+          submitError={backfillManager.startError}
         />
       )}
 
