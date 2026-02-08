@@ -33,8 +33,9 @@ export const agentsApi = {
 
   // Get agent episodes
   getAgentEpisodes: async (id: string): Promise<Episode[]> => {
-    const { data} = await apiClient.get(`/agents/${id}/episodes`);
-    return data;
+    const { data } = await apiClient.get(`/agents/${id}/episodes`);
+    // Backend returns {episodes: [], ...} but we just need the array
+    return data.episodes || data;
   },
 
   // Get RSS feed URL
@@ -137,6 +138,11 @@ export const agentsApi = {
   }>> => {
     const { data } = await apiClient.get(`/agents/${id}/backfill`);
     return data;
+  },
+
+  // Cancel backfill job
+  cancelBackfill: async (id: string, jobId: string): Promise<void> => {
+    await apiClient.delete(`/agents/${id}/backfill/${jobId}`);
   },
 
   // Get total episode count

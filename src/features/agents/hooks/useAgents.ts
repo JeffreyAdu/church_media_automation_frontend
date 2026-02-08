@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { agentsApi } from '../api/agentsApi';
 import type { CreateAgentInput, UpdateAgentInput } from '../../../shared/types';
@@ -151,8 +151,8 @@ export const useBackfillStatus = (agentId: string, jobId: string | null, enabled
 
 // Combined backfill manager hook
 export const useBackfillManager = (agentId: string) => {
-  const queryClient = useQueryClient();
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
+  const [jobStatuses, setJobStatuses] = useState<Map<string, any>>(new Map());
 
   const { data: backfillJobs = [] } = useBackfillJobs(agentId);
   const startBackfill = useStartBackfill();
@@ -163,6 +163,31 @@ export const useBackfillManager = (agentId: string) => {
     .filter((job: any) => job.status === 'pending' || job.status === 'processing')
     .map((job: any) => job.jobId)
     .filter((jobId): jobId is string => !!jobId);
+
+  // Poll all active job statuses
+  useEffect(() => {
+    const pollStatuses = async () => {
+      const newStatuses = new Map();
+      for (const jobId of activeJobIds) {
+        try {
+          const status = await agentsApi.getBackfillStatus(agentId, jobId);
+          newStatuses.set(jobId, status);
+        } catch (error) {
+          // Keep existing status on error
+          if (jobStatuses.has(jobId)) {
+            newStatuses.set(jobId, jobStatuses.get(jobId));
+          }
+        }
+      }
+      setJobStatuses(newStatuses);
+    };
+
+    if (activeJobIds.length > 0) {
+      pollStatuses();
+      const interval = setInterval(pollStatuses, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [agentId, activeJobIds, jobStatuses]);
 
   const handleStartBackfill = async (date: string) => {
     const result = await startBackfill.mutateAsync({ id: agentId, date });
@@ -177,6 +202,7 @@ export const useBackfillManager = (agentId: string) => {
     activeJobIds,
     currentJobId,
     currentJobStatus,
+    jobStatuses,
     startBackfill: handleStartBackfill,
     isStarting: startBackfill.isPending,
     startError: startBackfill.error?.message || null,

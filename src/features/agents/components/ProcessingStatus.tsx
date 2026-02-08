@@ -1,79 +1,36 @@
-import { useEffect, useRef, useState } from 'react';
-import { Loader2, CheckCircle, XCircle, Clock, ChevronDown, ChevronUp } from 'lucide-react';
-import { agentsApi } from '../api/agentsApi';
+import { useState } from 'react';
+import { Loader2, CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, X } from 'lucide-react';
+import ConfirmDialog from './ConfirmDialog';
 
 interface ProcessingStatusProps {
-  agentId: string;
-  jobId: string;
-  onComplete: () => void;
+  status: {
+    jobId: string;
+    status: 'pending' | 'processing' | 'completed' | 'failed';
+    totalVideos: number;
+    processedVideos: number;
+    enqueuedVideos: number;
+    error: string | null;
+    failedVideos: Array<{
+      videoId: string;
+      title: string;
+      reason: string;
+    }>;
+    activeVideos?: Array<{
+      videoId: string;
+      title?: string;
+      progress: number;
+      status: string;
+    }>;
+  } | null;
+  isLoading?: boolean;
+  onCancel?: (jobId: string) => void;
 }
 
-interface JobStatus {
-  jobId: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
-  totalVideos: number;
-  processedVideos: number;
-  enqueuedVideos: number;
-  error: string | null;
-  failedVideos: Array<{
-    videoId: string;
-    title: string;
-    reason: string;
-  }>;
-  activeVideos?: Array<{
-    videoId: string;
-    progress: number;
-    status: string;
-  }>;
-}
-
-export default function ProcessingStatus({ agentId, jobId, onComplete }: ProcessingStatusProps) {
-  const [status, setStatus] = useState<JobStatus | null>(null);
+export default function ProcessingStatus({ status, isLoading, onCancel }: ProcessingStatusProps) {
   const [showDetails, setShowDetails] = useState(false);
-  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
-  useEffect(() => {
-    const poll = async () => {
-      try {
-        const result = await agentsApi.getBackfillStatus(agentId, jobId);
-        const newStatus: JobStatus = {
-          jobId: result.jobId,
-          status: result.status as any,
-          totalVideos: result.totalVideos,
-          processedVideos: result.processedVideos,
-          enqueuedVideos: result.enqueuedVideos,
-          failedVideos: result.failedVideos || [],
-          activeVideos: result.activeVideos,
-          error: result.error || null,
-        };
-        
-        setStatus(newStatus);
-
-        if (result.status === 'completed' || result.status === 'failed') {
-          if (pollIntervalRef.current) {
-            clearInterval(pollIntervalRef.current);
-            pollIntervalRef.current = null;
-          }
-          if (result.status === 'completed') {
-            onComplete();
-          }
-        }
-      } catch (err) {
-        console.error('Failed to poll job status:', err);
-      }
-    };
-
-    poll();
-    pollIntervalRef.current = setInterval(poll, 3000);
-
-    return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-      }
-    };
-  }, [agentId, jobId, onComplete]);
-
-  if (!status) {
+  if (isLoading || !status) {
     return (
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
         <div className="flex items-center gap-3">
@@ -141,35 +98,70 @@ export default function ProcessingStatus({ agentId, jobId, onComplete }: Process
     }
   };
 
+  const handleCancelClick = () => {
+    setShowCancelConfirm(true);
+  };
+
+  const handleConfirmCancel = () => {
+    if (onCancel && status) {
+      onCancel(status.jobId);
+    }
+    setShowCancelConfirm(false);
+  };
+
   return (
-    <div className={`border rounded-lg p-6 mb-4 ${getStatusColor()}`}>
-      {/* Header with icon and status */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          {getStatusIcon()}
-          <div>
-            <h3 className={`font-semibold ${getTextColor()}`}>
-              {getStatusText()}
-            </h3>
-            {status.totalVideos > 0 && status.status === 'processing' && (
-              <p className="text-sm text-gray-600 mt-0.5">
-                {status.activeVideos?.length || 0} videos processing now...
-              </p>
+    <>
+      <ConfirmDialog
+        isOpen={showCancelConfirm}
+        title="Cancel Import?"
+        message="This will stop the import process and remove all queued videos. Videos that have already been processed will remain. This action cannot be undone."
+        confirmLabel="Yes, Cancel Import"
+        cancelLabel="Keep Running"
+        variant="danger"
+        onConfirm={handleConfirmCancel}
+        onCancel={() => setShowCancelConfirm(false)}
+      />
+
+      <div className={`border rounded-lg p-6 mb-4 ${getStatusColor()}`}>
+        {/* Header with icon and status */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            {getStatusIcon()}
+            <div>
+              <h3 className={`font-semibold ${getTextColor()}`}>
+                {getStatusText()}
+              </h3>
+              {status.totalVideos > 0 && status.status === 'processing' && (
+                <p className="text-sm text-gray-600 mt-0.5">
+                  {status.activeVideos?.length || 0} videos processing now...
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            {status.totalVideos > 0 && (
+              <div className="text-right">
+                <div className={`text-2xl font-bold ${getTextColor()}`}>
+                  {status.processedVideos}<span className="text-lg text-gray-500">/{status.totalVideos}</span>
+                </div>
+                <div className="text-xs text-gray-600">completed</div>
+              </div>
+            )}
+            {/* Cancel button - only show for pending/processing */}
+            {onCancel && (status.status === 'pending' || status.status === 'processing') && (
+              <button
+                onClick={handleCancelClick}
+                className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                title="Cancel import"
+              >
+                <X className="h-5 w-5" />
+              </button>
             )}
           </div>
         </div>
-        {status.totalVideos > 0 && (
-          <div className="text-right">
-            <div className={`text-2xl font-bold ${getTextColor()}`}>
-              {status.processedVideos}<span className="text-lg text-gray-500">/{status.totalVideos}</span>
-            </div>
-            <div className="text-xs text-gray-600">completed</div>
-          </div>
-        )}
-      </div>
 
-      {/* Progress bar */}
-      {status.totalVideos > 0 && status.status !== 'completed' && (
+        {/* Progress bar */}
+        {status.totalVideos > 0 && status.status !== 'completed' && (
         <div className="mb-4">
           <div className="w-full bg-white rounded-full h-3 overflow-hidden shadow-inner">
             <div
@@ -199,7 +191,7 @@ export default function ProcessingStatus({ agentId, jobId, onComplete }: Process
       )}
 
       {/* Details section (collapsible) */}
-      {(status.activeVideos?.length > 0 || status.failedVideos?.length > 0) && (
+      {((status.activeVideos?.length ?? 0) > 0 || (status.failedVideos?.length ?? 0) > 0) && (
         <div className="mt-4 border-t border-gray-300 pt-4">
           <button
             onClick={() => setShowDetails(!showDetails)}
@@ -220,11 +212,19 @@ export default function ProcessingStatus({ agentId, jobId, onComplete }: Process
                   <div className="text-xs font-semibold text-gray-700 mb-2">
                     ⏳ Currently Processing:
                   </div>
-                  <div className="space-y-2 max-h-60 overflow-y-auto">
-                    {status.activeVideos.slice(0, 3).map((video) => (
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {status.activeVideos.map((video) => (
                       <div key={video.videoId} className="bg-white rounded-lg p-3 border border-gray-200">
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs font-mono text-gray-500">{video.videoId}</span>
+                          <a
+                            href={`https://www.youtube.com/watch?v=${video.videoId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-600 hover:underline font-medium truncate max-w-sm"
+                            title={video.title || video.videoId}
+                          >
+                            {video.title || video.videoId}
+                          </a>
                           <span className="text-xs font-semibold text-blue-600">{video.progress}%</span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-1.5 mb-2">
@@ -236,27 +236,29 @@ export default function ProcessingStatus({ agentId, jobId, onComplete }: Process
                         <div className="text-xs text-gray-600">{video.status}</div>
                       </div>
                     ))}
-                    {status.activeVideos.length > 3 && (
-                      <p className="text-xs text-gray-500 text-center py-2">
-                        + {status.activeVideos.length - 3} more videos processing...
-                      </p>
-                    )}
                   </div>
                 </div>
               )}
 
               {/* Failed videos */}
               {status.failedVideos && status.failedVideos.length > 0 && (
-                <div>
+                <div className="mt-4">
                   <div className="text-xs font-semibold text-red-700 mb-2">
                     ⚠️ Failed Videos ({status.failedVideos.length}):
                   </div>
-                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
                     {status.failedVideos.map((video) => (
                       <div key={video.videoId} className="bg-red-50 rounded-lg p-3 border border-red-200">
                         <div className="flex items-start justify-between">
                           <div className="flex-1 min-w-0 pr-3">
-                            <div className="text-sm font-medium text-gray-900 truncate">{video.title}</div>
+                            <a
+                              href={`https://www.youtube.com/watch?v=${video.videoId}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm font-medium text-gray-900 hover:text-blue-600 hover:underline block truncate"
+                            >
+                              {video.title}
+                            </a>
                             <div className="text-xs text-gray-500 font-mono mt-1">{video.videoId}</div>
                           </div>
                           <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded whitespace-nowrap">
@@ -273,5 +275,6 @@ export default function ProcessingStatus({ agentId, jobId, onComplete }: Process
         </div>
       )}
     </div>
+    </>
   );
 }

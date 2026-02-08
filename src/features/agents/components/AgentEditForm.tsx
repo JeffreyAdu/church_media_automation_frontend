@@ -1,7 +1,6 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useUpdateAgent } from '../hooks/useAgents';
 import type { Agent, UpdateAgentInput } from '../../../shared/types';
 
 const schema = z.object({
@@ -13,11 +12,11 @@ const schema = z.object({
 
 interface AgentEditFormProps {
   agent: Agent;
+  onSubmit: (data: UpdateAgentInput) => Promise<void>;
+  isSubmitting?: boolean;
 }
 
-export default function AgentEditForm({ agent }: AgentEditFormProps) {
-  const updateAgent = useUpdateAgent();
-  
+export default function AgentEditForm({ agent, onSubmit, isSubmitting }: AgentEditFormProps) {
   const {
     register,
     handleSubmit,
@@ -31,14 +30,6 @@ export default function AgentEditForm({ agent }: AgentEditFormProps) {
       podcast_author: agent.podcast_author || '',
     },
   });
-
-  const onSubmit = async (data: UpdateAgentInput) => {
-    try {
-      await updateAgent.mutateAsync({ id: agent.id, input: data });
-    } catch (error) {
-      console.error('Failed to update agent:', error);
-    }
-  };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -93,18 +84,11 @@ export default function AgentEditForm({ agent }: AgentEditFormProps) {
 
       <button
         type="submit"
-        disabled={!isDirty || updateAgent.isPending}
+        disabled={!isDirty || isSubmitting}
         className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
-        {updateAgent.isPending ? 'Saving...' : 'Save Changes'}
+        {isSubmitting ? 'Saving...' : 'Save Changes'}
       </button>
-
-      {updateAgent.isSuccess && (
-        <p className="text-sm text-green-600">Changes saved successfully!</p>
-      )}
-      {updateAgent.isError && (
-        <p className="text-sm text-red-600">Failed to save changes</p>
-      )}
     </form>
   );
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useAgent, useAgentEpisodes, useUploadArtwork, useUploadIntro, useUploadOutro, useDeleteAgent, useBackfillManager } from '../hooks/useAgents';
+import { useAgent, useAgentEpisodes, useUploadArtwork, useUploadIntro, useUploadOutro, useDeleteAgent, useBackfillManager, useUpdateAgent } from '../hooks/useAgents';
+import { agentsApi } from '../api/agentsApi';
 import FileUpload from '../components/FileUpload';
 import RssFeedDisplay from '../components/RssFeedDisplay';
 import AgentEditForm from '../components/AgentEditForm';
@@ -22,6 +23,12 @@ export default function AgentDetails() {
   const { data: episodesData, refetch: refetchEpisodes } = useAgentEpisodes(id!);
   const backfillManager = useBackfillManager(id!);
   
+  const uploadArtwork = useUploadArtwork();
+  const uploadIntro = useUploadIntro();
+  const uploadOutro = useUploadOutro();
+  const deleteAgent = useDeleteAgent();
+  const updateAgent = useUpdateAgent();
+  
   // Safely extract episodes array from response
   const episodes = Array.isArray(episodesData) ? episodesData : [];
 
@@ -35,13 +42,54 @@ export default function AgentDetails() {
     }
   }, [backfillManager.activeJobIds, refetchEpisodes]);
 
-  const handleJobComplete = () => {
-    refetch();
-    refetchEpisodes();
-  };
+  // Handle job completions
+  useEffect(() => {
+    const completedJobs = Array.from(backfillManager.jobStatuses.values())
+      .filter((status: any) => status?.status === 'completed');
+    
+    if (completedJobs.length > 0) {
+      refetch();
+      refetchEpisodes();
+    }
+
+    if (backfillManager.currentJobStatus?.status === 'completed') {
+      setShowBackfill(false);
+      backfillManager.resetCurrentJob();
+    }
+  }, [backfillManager.jobStatuses, backfillManager.currentJobStatus, refetch, refetchEpisodes]);
 
   const handleBackfillSubmit = async (date: string) => {
     await backfillManager.startBackfill(date);
+  };
+
+  const handleCancelBackfill = async (jobId: string) => {
+    if (!agent) return;
+    
+    try {
+      await agentsApi.cancelBackfill(agent.id, jobId);
+      // Refetch to update the UI
+      refetch();
+      refetchEpisodes();
+    } catch (error) {
+      console.error('Failed to cancel backfill:', error);
+    }
+  };
+
+  const handleUpdateAgent = async (data: any) => {
+    try {
+      await updateAgent.mutateAsync({ id: id!, input: data });
+    } catch (error) {
+      console.error('Failed to update agent:', error);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await deleteAgent.mutateAsync(id!);
+      navigate('/app/agents');
+    } catch (error) {
+      console.error('Failed to delete channel:', error);
+    }
   };
 
   // Close dialog when completed
@@ -59,20 +107,6 @@ export default function AgentDetails() {
   useEffect(() => {
     console.log('Active backfill jobs:', backfillManager.backfillJobs);
   }, [backfillManager.backfillJobs]);
-  
-  const uploadArtwork = useUploadArtwork();
-  const uploadIntro = useUploadIntro();
-  const uploadOutro = useUploadOutro();
-  const deleteAgent = useDeleteAgent();
-
-  const handleDelete = async () => {
-    try {
-      await deleteAgent.mutateAsync(id!);
-      navigate('/app/agents');
-    } catch (error) {
-      console.error('Failed to delete channel:', error);
-    }
-  };
 
   if (isLoading) {
     return (
@@ -185,7 +219,11 @@ export default function AgentDetails() {
           <div className="space-y-6">
             <div>
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h2>
-              <AgentEditForm agent={agent} />
+              <AgentEditForm 
+                agent={agent} 
+                onSubmit={handleUpdateAgent}
+                isSubmitting={updateAgent.isPending}
+              />
             </div>
 
             <div className="pt-6 border-t border-gray-200">
@@ -316,9 +354,9 @@ export default function AgentDetails() {
                 {backfillManager.activeJobIds.map((jobId) => (
                   <ProcessingStatus
                     key={jobId}
-                    agentId={agent.id}
-                    jobId={jobId}
-                    onComplete={handleJobComplete}
+                    status={backfillManager.jobStatuses.get(jobId) || null}
+                    isLoading={!backfillManager.jobStatuses.has(jobId)}
+                    onCancel={handleCancelBackfill}
                   />
                 ))}
               </div>
