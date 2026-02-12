@@ -42,9 +42,11 @@ export default function Register() {
       await signUp(formData.email, formData.password, {
         organization_name: formData.organizationName,
       });
-      navigate('/app/dashboard');
+      // Redirect to email confirmation page instead of dashboard
+      navigate(`/confirm-email?email=${encodeURIComponent(formData.email)}`);
     } catch (err: any) {
-      setError(err.message || 'Failed to create account');
+      // AuthContext now provides user-friendly error messages
+      setError(err.message || 'Failed to create account. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -54,7 +56,7 @@ export default function Register() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div>
-          <h1 className="text-3xl font-bold text-center text-gray-900">Church Media Automation</h1>
+          <h1 className="text-3xl font-bold text-center text-gray-900">PodcastFlow</h1>
           <h2 className="mt-6 text-center text-2xl font-semibold text-gray-900">
             Create your account
           </h2>
@@ -76,7 +78,7 @@ export default function Register() {
           <div className="space-y-4">
             <div>
               <label htmlFor="organizationName" className="block text-sm font-medium text-gray-700 mb-1">
-                Church/Organization Name
+                Organization Name
               </label>
               <input
                 id="organizationName"
@@ -86,7 +88,7 @@ export default function Register() {
                 value={formData.organizationName}
                 onChange={handleChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Your Church Name"
+                placeholder="Your Organization"
               />
             </div>
 
@@ -103,7 +105,7 @@ export default function Register() {
                 value={formData.email}
                 onChange={handleChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="you@church.org"
+                placeholder="you@example.com"
               />
             </div>
 

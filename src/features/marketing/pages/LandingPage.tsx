@@ -11,7 +11,7 @@ export default function LandingPage() {
             <div className="flex items-center gap-2">
               <Podcast className="h-8 w-8 text-blue-600" />
               <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                Church Media Automation
+                PodcastFlow
               </span>
             </div>
             <div className="flex items-center gap-4">
@@ -38,18 +38,18 @@ export default function LandingPage() {
           <div className="text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold mb-8">
               <Sparkles className="h-4 w-4" />
-              Automate Your Church's Podcast Distribution
+              Automate Your YouTube-to-Podcast Workflow
             </div>
             <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-gray-900 mb-6 leading-tight">
-              Turn YouTube Sermons
+              Turn YouTube Videos
               <br />
               <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
                 Into Podcasts Automatically
               </span>
             </h1>
             <p className="text-xl text-gray-600 mb-12 max-w-3xl mx-auto leading-relaxed">
-              Connect your church's YouTube channel once and let us handle the rest. 
-              We automatically convert new sermons into podcast episodes and distribute them 
+              Connect your YouTube channel once and let us handle the rest. 
+              We automatically convert new videos into podcast episodes and distribute them 
               to Spotify, Apple Podcasts, Google Podcasts, and more.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
@@ -111,8 +111,8 @@ export default function LandingPage() {
                   Connect YouTube
                 </h3>
                 <p className="text-gray-600 leading-relaxed">
-                  Link your church's YouTube channel in seconds. We'll automatically 
-                  detect new sermon uploads and start processing them.
+                  Link your YouTube channel in seconds. We'll automatically 
+                  detect new video uploads and start processing them.
                 </p>
               </div>
             </div>
@@ -162,7 +162,7 @@ export default function LandingPage() {
               Everything You Need
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Professional podcast features built specifically for churches
+              Professional podcast features for content creators
             </p>
           </div>
 
@@ -170,7 +170,7 @@ export default function LandingPage() {
             {[
               {
                 title: 'Custom Branding',
-                description: 'Add your church logo and custom intro/outro audio to every episode'
+                description: 'Add your logo and custom intro/outro audio to every episode'
               },
               {
                 title: 'RSS Feed',
@@ -182,7 +182,7 @@ export default function LandingPage() {
               },
               {
                 title: 'Historical Import',
-                description: 'Backfill your entire sermon archive with one click'
+                description: 'Backfill your entire video archive with one click'
               },
               {
                 title: 'Episode Management',
@@ -209,10 +209,10 @@ export default function LandingPage() {
       <section className="py-24 bg-gradient-to-r from-blue-600 to-indigo-600">
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
           <h2 className="text-4xl font-bold text-white mb-6">
-            Ready to Expand Your Church's Reach?
+            Ready to Expand Your Reach?
           </h2>
           <p className="text-xl text-blue-100 mb-8">
-            Join churches using automation to share the Gospel through podcasts
+            Join creators using automation to grow their audience through podcasts
           </p>
           <Link
             to="/register"
@@ -230,10 +230,10 @@ export default function LandingPage() {
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="flex items-center gap-2 mb-4 md:mb-0">
               <Podcast className="h-6 w-6 text-blue-500" />
-              <span className="text-white font-semibold">Church Media Automation</span>
+              <span className="text-white font-semibold">PodcastFlow</span>
             </div>
             <div className="text-sm">
-              © {new Date().getFullYear()} Church Media Automation. All rights reserved.
+              © {new Date().getFullYear()} PodcastFlow. All rights reserved.
             </div>
           </div>
         </div>

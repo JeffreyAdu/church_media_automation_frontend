@@ -10,6 +10,7 @@ import AgentDetails from './features/agents/pages/AgentDetails';
 import CreateAgent from './features/agents/pages/CreateAgent';
 import Login from './features/auth/pages/Login';
 import Register from './features/auth/pages/Register';
+import ConfirmEmail from './features/auth/pages/ConfirmEmail';
 import Settings from './features/settings/pages/Settings';
 import LandingPage from './features/marketing/pages/LandingPage';
 
@@ -31,6 +32,7 @@ function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/confirm-email" element={<ConfirmEmail />} />
             
             {/* Redirect old routes to new /app routes */}
             <Route path="/dashboard" element={<Navigate to="/app/dashboard" replace />} />

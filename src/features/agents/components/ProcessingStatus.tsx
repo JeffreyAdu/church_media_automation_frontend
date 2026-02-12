@@ -19,7 +19,11 @@ interface ProcessingStatusProps {
       videoId: string;
       title?: string;
       progress: number;
-      status: string;
+      status: string; 
+    }>;
+    queuedVideos?: Array<{
+      videoId: string;
+      title?: string;
     }>;
   } | null;
   isLoading?: boolean;
@@ -191,7 +195,7 @@ export default function ProcessingStatus({ status, isLoading, onCancel }: Proces
       )}
 
       {/* Details section (collapsible) */}
-      {((status.activeVideos?.length ?? 0) > 0 || (status.failedVideos?.length ?? 0) > 0) && (
+      {((status.activeVideos?.length ?? 0) > 0 || (status.queuedVideos?.length ?? 0) > 0 || (status.failedVideos?.length ?? 0) > 0) && (
         <div className="mt-4 border-t border-gray-300 pt-4">
           <button
             onClick={() => setShowDetails(!showDetails)}
@@ -234,6 +238,37 @@ export default function ProcessingStatus({ status, isLoading, onCancel }: Proces
                           />
                         </div>
                         <div className="text-xs text-gray-600">{video.status}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Queued videos */}
+              {status.queuedVideos && status.queuedVideos.length > 0 && (
+                <div className="mt-3">
+                  <div className="text-xs font-semibold text-gray-700 mb-2">
+                    📋 Queued ({status.queuedVideos.length}):
+                  </div>
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {status.queuedVideos.map((video) => (
+                      <div key={video.videoId} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                        <div className="flex items-center justify-between">
+                          <a
+                            href={`https://www.youtube.com/watch?v=${video.videoId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-600 hover:underline font-medium truncate flex-1"
+                            title={video.title || video.videoId}
+                          >
+                            {video.title || video.videoId}
+                          </a>
+                          <span className="text-xs text-gray-500 ml-2">0%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
+                          <div className="h-1.5 bg-gray-400 rounded-full" style={{ width: '0%' }} />
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">Pending...</div>
                       </div>
                     ))}
                   </div>
