@@ -8,6 +8,15 @@
   box-sizing: border-box;
 }
 
+/* Thin custom scrollbar for video lists */
+.scrollbar-thin::-webkit-scrollbar        { width: 4px; }
+.scrollbar-thin::-webkit-scrollbar-track  { background: transparent; }
+.scrollbar-thin::-webkit-scrollbar-thumb  { background: #e4e4e7; border-radius: 9999px; }
+.scrollbar-thin::-webkit-scrollbar-thumb:hover { background: #a1a1aa; }
+
+.scrollbar-none          { scrollbar-width: none; }
+.scrollbar-none::-webkit-scrollbar { display: none; }
+
 body {
   margin: 0;
   font-family: var(--font-sans);

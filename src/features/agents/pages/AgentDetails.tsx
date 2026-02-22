@@ -1,14 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAgent, useAgentEpisodes, useUploadArtwork, useUploadIntro, useUploadOutro, useDeleteAgent, useBackfillManager, useUpdateAgent } from '../hooks/useAgents';
-import { agentsApi } from '../api/agentsApi';
+import { useActiveVideoSSE } from '../hooks/useActiveVideoSSE';
+import { useBackfillSSE } from '../hooks/useBackfillSSE';
 import FileUpload from '../components/FileUpload';
 import RssFeedDisplay from '../components/RssFeedDisplay';
 import AgentEditForm from '../components/AgentEditForm';
 import SetupChecklist from '../components/SetupChecklist';
 import BackfillDialog from '../components/BackfillDialog';
 import ProcessingStatus from '../components/ProcessingStatus';
-import { ArrowLeft, Settings, FileAudio, Radio, Rss, Calendar, Trash2, AlertTriangle } from 'lucide-react';
+import ConfirmDialog from '../components/ConfirmDialog';
+import { AnimatedList } from '@/shared/components/ui/animated-list';
+import { ArrowLeft, Settings, FileAudio, Radio, Rss, Calendar, Trash2, AlertTriangle, Clock, ExternalLink, Loader2, FileText, CheckCircle2 } from 'lucide-react';
 
 type TabType = 'overview' | 'media' | 'episodes' | 'rss';
 
@@ -18,10 +21,42 @@ export default function AgentDetails() {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [showBackfill, setShowBackfill] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [cancelJobId, setCancelJobId] = useState<string | null>(null);
+  const [dismissJobId, setDismissJobId] = useState<string | null>(null);
+  const [dismissedFailedIds, setDismissedFailedIds] = useState<Set<string>>(new Set());
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const tabScrollRef = useRef<HTMLDivElement>(null);
+  const rssTabRef = useRef<HTMLButtonElement>(null);
   
   const { data: agent, isLoading, error, refetch } = useAgent(id!);
   const { data: episodesData, refetch: refetchEpisodes } = useAgentEpisodes(id!);
-  const backfillManager = useBackfillManager(id!);
+
+  // SSE-driven job list — replaces polling entirely
+  const { jobs: backfillJobs } = useBackfillSSE(id!);
+  const backfillManager = useBackfillManager(id!, backfillJobs);
+
+  // SSE connections for every actively-processing video — lives at page level per architecture rule
+  const sseProgress = useActiveVideoSSE(id!, backfillManager.allActiveVideoIds);
+
+  // Build job statuses entirely from SSE data — no REST polling
+  const jobStatuses = useMemo(() => {
+    const result: Record<string, any> = {};
+    for (const job of backfillJobs) {
+      result[job.jobId] = {
+        ...job,
+        activeVideos: (job.activeVideoIds ?? []).map((videoId: string) => {
+          const live = sseProgress[videoId];
+          return {
+            videoId,
+            progress: live?.progress ?? 0,
+            status:   live?.status   ?? 'Queued...',
+            isLive:   live?.isConnected ?? false,
+          };
+        }),
+      };
+    }
+    return result;
+  }, [backfillJobs, sseProgress]);
   
   const uploadArtwork = useUploadArtwork();
   const uploadIntro = useUploadIntro();
@@ -32,31 +67,37 @@ export default function AgentDetails() {
   // Safely extract episodes array from response
   const episodes = Array.isArray(episodesData) ? episodesData : [];
 
-  // Auto-refresh episodes when there are active jobs
-  useEffect(() => {
-    if (backfillManager.activeJobIds.length > 0) {
-      const interval = setInterval(() => {
-        refetchEpisodes();
-      }, 5000);
-      return () => clearInterval(interval);
-    }
-  }, [backfillManager.activeJobIds, refetchEpisodes]);
+  // Jobs the user should see — dismissed via explicit user action only, no auto-dismiss
+  const visibleJobs = useMemo(() =>
+    backfillJobs.filter(job => {
+      if (job.status === 'pending' || job.status === 'processing') return true;
+      if (job.status === 'failed') return !dismissedFailedIds.has(job.jobId);
+      if (job.status === 'completed') return !dismissedFailedIds.has(job.jobId);
+      return false;
+    }),
+    [backfillJobs, dismissedFailedIds]
+  );
 
-  // Handle job completions
+  // Refetch episodes the moment any video completes — SSE-driven, no polling
+  const completedCount = useMemo(() =>
+    backfillJobs.reduce((sum, job) => sum + (job.completedVideos?.length ?? 0), 0),
+    [backfillJobs]
+  );
   useEffect(() => {
-    const completedJobs = Array.from(backfillManager.jobStatuses.values())
-      .filter((status: any) => status?.status === 'completed');
-    
-    if (completedJobs.length > 0) {
-      refetch();
-      refetchEpisodes();
-    }
+    if (completedCount > 0) refetchEpisodes();
+  }, [completedCount]);
 
-    if (backfillManager.currentJobStatus?.status === 'completed') {
-      setShowBackfill(false);
-      backfillManager.resetCurrentJob();
-    }
-  }, [backfillManager.jobStatuses, backfillManager.currentJobStatus, refetch, refetchEpisodes]);
+  // Show pill whenever the RSS tab button is not fully visible in the scroll container
+  useEffect(() => {
+    const btn = rssTabRef.current;
+    if (!btn) return;
+    const io = new IntersectionObserver(
+      ([entry]) => setCanScrollRight(!entry.isIntersecting),
+      { root: tabScrollRef.current, threshold: 1.0 }
+    );
+    io.observe(btn);
+    return () => io.disconnect();
+  }, []);
 
   const handleBackfillSubmit = async (date: string) => {
     await backfillManager.startBackfill(date);
@@ -66,7 +107,7 @@ export default function AgentDetails() {
     if (!agent) return;
     
     try {
-      await agentsApi.cancelBackfill(agent.id, jobId);
+      await backfillManager.cancelBackfill(jobId);
       // Refetch to update the UI
       refetch();
       refetchEpisodes();
@@ -92,21 +133,27 @@ export default function AgentDetails() {
     }
   };
 
-  // Close dialog when completed
+  // Close dialog once all videos are enqueued — driven by SSE, not REST poll
   useEffect(() => {
-    const status = backfillManager.currentJobStatus;
-    if (status && status.status === 'completed') {
+    if (!showBackfill || !backfillManager.currentJobId) return;
+    const job = backfillJobs.find(j => j.jobId === backfillManager.currentJobId);
+    if (!job || job.totalVideos === 0) return;
+    if (job.enqueuedVideos >= job.totalVideos) {
       setShowBackfill(false);
-      backfillManager.resetCurrentJob();
+    }
+  }, [backfillJobs, showBackfill, backfillManager.currentJobId]);
+
+  // Refresh episodes list when job finishes — driven by SSE
+  useEffect(() => {
+    const job = backfillJobs.find(j => j.jobId === backfillManager.currentJobId);
+    if (job?.status === 'completed') {
       refetch();
       refetchEpisodes();
     }
-  }, [backfillManager.currentJobStatus]);
+  }, [backfillJobs, backfillManager.currentJobId]);
 
   // Debug log
-  useEffect(() => {
-    console.log('Active backfill jobs:', backfillManager.backfillJobs);
-  }, [backfillManager.backfillJobs]);
+  // (removed — no longer needed)
 
   if (isLoading) {
     return (
@@ -191,25 +238,45 @@ export default function AgentDetails() {
       />
 
       {/* Tabs */}
-      <div className="border-b border-gray-200">
-        <div className="flex gap-8">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <Icon className="h-5 w-5 mr-2" />
-                {tab.label}
-              </button>
-            );
-          })}
+      <div className="relative">
+        <div ref={tabScrollRef} className="border-b border-gray-200 overflow-x-auto scrollbar-none">
+          <div className="flex gap-8 min-w-max">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  ref={tab.id === 'rss' ? rssTabRef : null}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    activeTab === tab.id
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <Icon className="h-5 w-5 mr-2" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        {/* Scroll hint pill — clickable, scrolls to end and activates RSS tab */}
+        <div
+          className={`pointer-events-none absolute inset-y-0 right-0 flex items-center pr-1 pl-8 bg-gradient-to-l from-white via-white/90 to-transparent transition-all duration-300 ${
+            canScrollRight ? 'opacity-100' : 'opacity-0'
+          }`}
+        >
+          <button
+            className="pointer-events-auto flex items-center gap-1 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-semibold px-3 py-1.5 rounded-full shadow-md transition-all duration-150"
+            onClick={() => {
+              tabScrollRef.current?.scrollTo({ left: tabScrollRef.current.scrollWidth, behavior: 'smooth' });
+              setActiveTab('rss');
+            }}
+          >
+            <Rss className="h-3 w-3" />
+            RSS Feed
+          </button>
         </div>
       </div>
 
@@ -323,7 +390,7 @@ export default function AgentDetails() {
 
         {activeTab === 'episodes' && (
           <div>
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900 mb-1">
                   Episodes ({episodes?.length || 0})
@@ -338,27 +405,42 @@ export default function AgentDetails() {
               </div>
               <button
                 onClick={() => setShowBackfill(true)}
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+                className="inline-flex items-center justify-center w-full sm:w-auto px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors"
               >
                 <Calendar className="h-4 w-4 mr-2" />
                 Import Historical Videos
               </button>
             </div>
 
-            {/* Processing status banners */}
-            {backfillManager.activeJobIds.length > 0 && (
+            {/* Processing status banners — active jobs + brief completed flash + persistent failed */}
+            {visibleJobs.length > 0 && (
               <div className="mb-4 space-y-2">
                 <div className="text-sm text-gray-600 font-medium">
-                  {backfillManager.activeJobIds.length === 1 ? 'Import in progress' : `${backfillManager.activeJobIds.length} imports in progress`}
+                  {backfillManager.activeJobIds.length > 0
+                    ? backfillManager.activeJobIds.length === 1
+                      ? 'Import in progress'
+                      : `${backfillManager.activeJobIds.length} imports in progress`
+                    : 'Import complete'}
                 </div>
-                {backfillManager.activeJobIds.map((jobId) => (
-                  <ProcessingStatus
-                    key={jobId}
-                    status={backfillManager.jobStatuses.get(jobId) || null}
-                    isLoading={!backfillManager.jobStatuses.has(jobId)}
-                    onCancel={handleCancelBackfill}
-                  />
-                ))}
+                <AnimatedList>
+                  {visibleJobs.map((job) => (
+                    <ProcessingStatus
+                      key={job.jobId}
+                      status={jobStatuses[job.jobId] ?? null}
+                      isLoading={!jobStatuses[job.jobId]}
+                      onCancelRequest={
+                        job.status === 'pending' || job.status === 'processing'
+                          ? () => setCancelJobId(job.jobId)
+                          : undefined
+                      }
+                      onDismiss={
+                        job.status === 'failed' || job.status === 'completed'
+                          ? () => setDismissJobId(job.jobId)
+                          : undefined
+                      }
+                    />
+                  ))}
+                </AnimatedList>
               </div>
             )}
 
@@ -386,21 +468,25 @@ export default function AgentDetails() {
                               : 'bg-yellow-100 text-yellow-700'
                           }`}
                         >
-                          {episode.published ? '✓ Published' : '📋 Draft'}
+                          {episode.published ? (
+                            <><CheckCircle2 className="inline h-3 w-3 mr-1" />Published</>
+                          ) : (
+                            <><FileText className="inline h-3 w-3 mr-1" />Draft</>
+                          )}
                         </span>
                       </div>
                       <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                        <span>📅 {new Date(episode.published_at).toLocaleDateString()}</span>
+                          <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{new Date(episode.published_at).toLocaleDateString()}</span>
                         {episode.duration_seconds && (
-                          <span>⏱️ {Math.floor(episode.duration_seconds / 60)} min</span>
+                          <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{Math.floor(episode.duration_seconds / 60)} min</span>
                         )}
                         <a
                           href={episode.youtube_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-700"
+                          className="flex items-center gap-1 text-blue-600 hover:text-blue-700"
                         >
-                          🎥 YouTube
+                          <ExternalLink className="h-3 w-3" />YouTube
                         </a>
                       </div>
                     </div>
@@ -424,25 +510,58 @@ export default function AgentDetails() {
         {activeTab === 'rss' && <RssFeedDisplay agentId={agent.id} />}
       </div>
 
-      {showBackfill && (
-        <BackfillDialog
-          onClose={() => {
-            setShowBackfill(false);
-            backfillManager.resetCurrentJob();
-          }}
-          onSubmit={handleBackfillSubmit}
-          backfillStatus={backfillManager.currentJobStatus ? {
-            jobId: backfillManager.currentJobStatus.jobId,
-            status: backfillManager.currentJobStatus.status as any,
-            totalVideos: backfillManager.currentJobStatus.totalVideos,
-            processedVideos: backfillManager.currentJobStatus.processedVideos,
-            enqueuedVideos: backfillManager.currentJobStatus.enqueuedVideos,
-            error: backfillManager.currentJobStatus.error || null,
-          } : null}
-          isSubmitting={backfillManager.isStarting}
-          submitError={backfillManager.startError}
-        />
-      )}
+      {showBackfill && (() => {
+          const currentSseJob = backfillJobs.find(j => j.jobId === backfillManager.currentJobId) ?? null;
+          return (
+            <BackfillDialog
+              onClose={() => {
+                setShowBackfill(false);
+                backfillManager.resetCurrentJob();
+              }}
+              onSubmit={handleBackfillSubmit}
+              backfillStatus={currentSseJob ? {
+                jobId:           currentSseJob.jobId,
+                status:          currentSseJob.status as any,
+                totalVideos:     currentSseJob.totalVideos,
+                processedVideos: currentSseJob.processedVideos,
+                enqueuedVideos:  currentSseJob.enqueuedVideos,
+                error:           currentSseJob.error,
+              } : null}
+              isSubmitting={backfillManager.isStarting}
+              submitError={backfillManager.startError}
+            />
+          );
+        })()}
+
+      <ConfirmDialog
+        isOpen={!!cancelJobId}
+        title="Cancel Import?"
+        message="This will stop the import and remove all queued videos. Videos already processed will remain."
+        confirmLabel="Yes, Cancel Import"
+        cancelLabel="Keep Running"
+        variant="danger"
+        onConfirm={() => { handleCancelBackfill(cancelJobId!); setCancelJobId(null); }}
+        onCancel={() => setCancelJobId(null)}
+      />
+
+      <ConfirmDialog
+        isOpen={!!dismissJobId}
+        title="Dismiss import summary?"
+        message="This will remove the summary from view. You can always check episode results below."
+        confirmLabel="Yes, Dismiss"
+        cancelLabel="Keep Visible"
+        variant="info"
+        onConfirm={() => {
+          const job = backfillJobs.find(j => j.jobId === dismissJobId);
+          setDismissedFailedIds(prev => new Set(prev).add(dismissJobId!));
+          if (job?.status === 'completed') {
+            refetchEpisodes();
+            if (dismissJobId === backfillManager.currentJobId) backfillManager.resetCurrentJob();
+          }
+          setDismissJobId(null);
+        }}
+        onCancel={() => setDismissJobId(null)}
+      />
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
@@ -486,7 +605,7 @@ export default function AgentDetails() {
                 >
                   {deleteAgent.isPending ? (
                     <>
-                      <span className="animate-spin mr-2">⏳</span>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
                       Deleting...
                     </>
                   ) : (

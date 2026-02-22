@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { agentsApi } from '../api/agentsApi';
 import type { CreateAgentInput, UpdateAgentInput } from '../../../shared/types';
+
 
 // Query keys
 export const agentKeys = {
@@ -116,16 +117,6 @@ export const useUploadOutro = () => {
   });
 };
 
-// Get backfill jobs
-export const useBackfillJobs = (id: string) => {
-  return useQuery({
-    queryKey: [...agentKeys.detail(id), 'backfillJobs'],
-    queryFn: () => agentsApi.getAgentBackfillJobs(id),
-    enabled: !!id,
-    refetchInterval: 5000, // Auto-refresh every 5 seconds
-  });
-};
-
 // Start backfill mutation
 export const useStartBackfill = () => {
   const queryClient = useQueryClient();
@@ -145,54 +136,77 @@ export const useBackfillStatus = (agentId: string, jobId: string | null, enabled
     queryKey: [...agentKeys.detail(agentId), 'backfillStatus', jobId],
     queryFn: () => agentsApi.getBackfillStatus(agentId, jobId!),
     enabled: !!agentId && !!jobId && enabled,
-    refetchInterval: 2000, // Poll every 2 seconds
+    // Stop polling automatically once the job reaches a terminal state
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      if (status === 'completed' || status === 'failed') return false;
+      return 3000;
+    },
   });
 };
 
-// Combined backfill manager hook
-export const useBackfillManager = (agentId: string) => {
-  const [currentJobId, setCurrentJobId] = useState<string | null>(null);
-  const [jobStatuses, setJobStatuses] = useState<Map<string, any>>(new Map());
+// Cancel backfill mutation
+export const useCancelBackfill = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ id, jobId }: { id: string; jobId: string }) =>
+      agentsApi.cancelBackfill(id, jobId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: agentKeys.detail(variables.id) });
+      queryClient.invalidateQueries({ queryKey: [...agentKeys.detail(variables.id), 'backfillJobs'] });
+      queryClient.invalidateQueries({ queryKey: agentKeys.episodes(variables.id) });
+    },
+  });
+};
 
-  const { data: backfillJobs = [] } = useBackfillJobs(agentId);
+// Combined backfill manager hook — REST/React Query only, no SSE.
+// Pages call this alongside useBackfillSSE (which provides backfillJobs) and useActiveVideoSSE.
+export const useBackfillManager = (agentId: string, backfillJobs: any[] = []) => {
+  const [currentJobId, setCurrentJobId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  // backfillJobs is provided by the page via useBackfillSSE — no polling needed here
   const startBackfill = useStartBackfill();
+  const cancelBackfill = useCancelBackfill();
+
+  // Active job IDs derived from the jobs list
+  const activeJobIds = useMemo(() =>
+    backfillJobs
+      .filter((job: any) => job.status === 'pending' || job.status === 'processing')
+      .map((job: any) => job.jobId)
+      .filter((id): id is string => !!id),
+    [backfillJobs]
+  );
+
+  // Flat list of all YouTube video IDs being processed — derived from SSE data, no polling needed
+  const allActiveVideoIds = useMemo(() => {
+    const ids = backfillJobs
+      .filter((job: any) => job.status === 'pending' || job.status === 'processing')
+      .flatMap((job: any) => (job.activeVideoIds ?? []) as string[]);
+    return [...new Set(ids)];
+  }, [backfillJobs]);
+
+  // Poll current job status for the BackfillDialog progress view
   const { data: currentJobStatus } = useBackfillStatus(agentId, currentJobId, !!currentJobId);
 
-  // Get active job IDs
-  const activeJobIds = backfillJobs
-    .filter((job: any) => job.status === 'pending' || job.status === 'processing')
-    .map((job: any) => job.jobId)
-    .filter((jobId): jobId is string => !!jobId);
-
-  // Poll all active job statuses
+  // When the current job completes, refresh episodes and agent data
   useEffect(() => {
-    const pollStatuses = async () => {
-      const newStatuses = new Map();
-      for (const jobId of activeJobIds) {
-        try {
-          const status = await agentsApi.getBackfillStatus(agentId, jobId);
-          newStatuses.set(jobId, status);
-        } catch (error) {
-          // Keep existing status on error
-          if (jobStatuses.has(jobId)) {
-            newStatuses.set(jobId, jobStatuses.get(jobId));
-          }
-        }
-      }
-      setJobStatuses(newStatuses);
-    };
-
-    if (activeJobIds.length > 0) {
-      pollStatuses();
-      const interval = setInterval(pollStatuses, 3000);
-      return () => clearInterval(interval);
+    if (currentJobStatus?.status === 'completed') {
+      queryClient.invalidateQueries({ queryKey: agentKeys.episodes(agentId) });
+      queryClient.invalidateQueries({ queryKey: agentKeys.detail(agentId) });
     }
-  }, [agentId, activeJobIds, jobStatuses]);
+  }, [currentJobStatus?.status, agentId, queryClient]);
 
   const handleStartBackfill = async (date: string) => {
     const result = await startBackfill.mutateAsync({ id: agentId, date });
     setCurrentJobId(result.jobId);
+    queryClient.invalidateQueries({ queryKey: [...agentKeys.detail(agentId), 'backfillJobs'] });
     return result.jobId;
+  };
+
+  const handleCancelBackfill = async (jobId: string) => {
+    await cancelBackfill.mutateAsync({ id: agentId, jobId });
   };
 
   const resetCurrentJob = () => setCurrentJobId(null);
@@ -202,10 +216,13 @@ export const useBackfillManager = (agentId: string) => {
     activeJobIds,
     currentJobId,
     currentJobStatus,
-    jobStatuses,
+    allActiveVideoIds,     // Passed to useActiveVideoSSE at the page level
     startBackfill: handleStartBackfill,
+    cancelBackfill: handleCancelBackfill,
     isStarting: startBackfill.isPending,
+    isCanceling: cancelBackfill.isPending,
     startError: startBackfill.error?.message || null,
+    cancelError: cancelBackfill.error?.message || null,
     resetCurrentJob,
   };
 };

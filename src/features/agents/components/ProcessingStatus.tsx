@@ -1,6 +1,15 @@
-import { useState } from 'react';
-import { Loader2, CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, X } from 'lucide-react';
-import ConfirmDialog from './ConfirmDialog';
+import { Loader2, CheckCircle2, XCircle, Clock, AlertTriangle, X } from 'lucide-react';
+import { Card, CardContent } from '@/shared/components/ui/card';
+import { Badge } from '@/shared/components/ui/badge';
+import { Progress } from '@/shared/components/ui/progress';
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from '@/shared/components/ui/accordion';
+import { AnimatedList } from '@/shared/components/ui/animated-list';
+import { cn } from '@/shared/utils/classnames';
 
 interface ProcessingStatusProps {
   status: {
@@ -19,297 +28,317 @@ interface ProcessingStatusProps {
       videoId: string;
       title?: string;
       progress: number;
-      status: string; 
+      status: string;
+      isLive?: boolean;
     }>;
     queuedVideos?: Array<{
       videoId: string;
       title?: string;
     }>;
+    completedVideos?: Array<{
+      videoId: string;
+      title?: string;
+    }>;
   } | null;
   isLoading?: boolean;
-  onCancel?: (jobId: string) => void;
+  onCancelRequest?: () => void;
+  onDismiss?: () => void;
 }
 
-export default function ProcessingStatus({ status, isLoading, onCancel }: ProcessingStatusProps) {
-  const [showDetails, setShowDetails] = useState(false);
-  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+// ── Video row states ────────────────────────────────────────────────────────
+type VideoState = 'active' | 'queued' | 'completed-video' | 'failed-video';
 
+interface UnifiedVideo {
+  videoId: string;
+  title?: string;
+  state: VideoState;
+  progress?: number;
+  statusText?: string;
+  isLive?: boolean;
+  reason?: string;
+}
+
+// ── Per-video row ───────────────────────────────────────────────────────────
+function VideoRow({ video }: { video: UnifiedVideo }) {
+  const cfg = {
+    active: {
+      stripe:      'bg-indigo-500',
+      icon:        <Loader2 className="h-3.5 w-3.5 text-indigo-500 animate-spin flex-shrink-0" />,
+      titleClass:  'text-gray-900',
+      barColor:    'bg-indigo-500',
+      showPct:     true,
+      pctClass:    'text-indigo-600 font-semibold',
+    },
+    queued: {
+      stripe:      'bg-zinc-300',
+      icon:        <Clock className="h-3.5 w-3.5 text-zinc-400 flex-shrink-0" />,
+      titleClass:  'text-gray-500',
+      barColor:    'bg-zinc-300',
+      showPct:     false,
+      pctClass:    '',
+    },
+    'completed-video': {
+      stripe:      'bg-green-500',
+      icon:        <CheckCircle2 className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />,
+      titleClass:  'text-gray-500 line-through',
+      barColor:    'bg-green-500',
+      showPct:     false,
+      pctClass:    '',
+    },
+    'failed-video': {
+      stripe:      'bg-red-500',
+      icon:        <XCircle className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />,
+      titleClass:  'text-gray-900',
+      barColor:    'bg-red-400',
+      showPct:     false,
+      pctClass:    '',
+    },
+  }[video.state];
+
+  const pct = video.progress ?? (video.state === 'completed-video' ? 100 : 0);
+  const isQueued = video.state === 'queued';
+
+  return (
+    <div className="flex gap-0 overflow-hidden rounded-md border border-zinc-100 bg-white shadow-sm">
+      {/* Left stripe */}
+      <div className={cn('w-1 flex-shrink-0', cfg.stripe)} />
+
+      {/* Content */}
+      <div className="flex-1 px-3 py-2.5 space-y-1.5 min-w-0">
+        <div className="flex items-center gap-2 justify-between">
+          <div className="flex items-center gap-1.5 min-w-0">
+            {cfg.icon}
+            <a
+              href={`https://www.youtube.com/watch?v=${video.videoId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn('text-xs truncate hover:underline', cfg.titleClass)}
+              title={video.title || video.videoId}
+            >
+              {video.title || video.videoId}
+            </a>
+          </div>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            {video.isLive && video.state === 'active' && (
+              <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" title="Live" />
+            )}
+            {cfg.showPct && (
+              <span className={cn('text-xs tabular-nums', cfg.pctClass)}>{pct}%</span>
+            )}
+            {video.state === 'failed-video' && video.reason && (
+              <Badge variant="destructive" className="text-[10px] px-1.5 py-0">{video.reason}</Badge>
+            )}
+          </div>
+        </div>
+
+        {/* Progress bar — shimmer pulse for queued, colored fill for active/complete */}
+        <div className={cn('w-full h-1 rounded-full bg-zinc-100 overflow-hidden', isQueued && 'animate-pulse')}>
+          <div
+            className={cn('h-full rounded-full transition-all duration-700', cfg.barColor)}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+
+        {/* Step label — only shown while actively processing */}
+        {video.state === 'active' && video.statusText && (
+          <p className="text-[10px] text-zinc-400 leading-none">{video.statusText}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Main component ──────────────────────────────────────────────────────────
+export default function ProcessingStatus({
+  status,
+  isLoading,
+  onCancelRequest,
+  onDismiss,
+}: ProcessingStatusProps) {
+  // Loading skeleton
   if (isLoading || !status) {
     return (
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-        <div className="flex items-center gap-3">
-          <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
-          <span className="text-sm text-blue-800">Loading status...</span>
-        </div>
-      </div>
+      <Card className="border-zinc-200 shadow-sm">
+        <CardContent className="pt-5">
+          <div className="flex items-center gap-3">
+            <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
+            <span className="text-sm text-zinc-500">Loading import status…</span>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
-  const getProgressPercentage = () => {
-    if (status.totalVideos === 0) return 0;
-    return Math.round((status.processedVideos / status.totalVideos) * 100);
-  };
+  // Derived values
+  const pct             = status.totalVideos > 0 ? Math.round((status.processedVideos / status.totalVideos) * 100) : 0;
+  const isActive        = status.status === 'pending' || status.status === 'processing';
+  const isCompleted     = status.status === 'completed';
+  const isFailed        = status.status === 'failed';
+  const hasFailedVideos = (status.failedVideos?.length ?? 0) > 0;
 
-  const getStatusIcon = () => {
-    switch (status.status) {
-      case 'completed':
-        return <CheckCircle className="h-5 w-5 text-green-600" />;
-      case 'failed':
-        return <XCircle className="h-5 w-5 text-red-600" />;
-      case 'pending':
-        return <Clock className="h-5 w-5 text-yellow-600" />;
-      default:
-        return <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />;
-    }
-  };
+  type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'success' | 'warning' | 'outline';
 
-  const getStatusText = () => {
-    switch (status.status) {
-      case 'completed':
-        return 'Processing Complete';
-      case 'failed':
-        return 'Processing Failed';
-      case 'pending':
-        return 'Queued for Processing';
-      default:
-        return 'Processing Videos';
-    }
-  };
+  const cfg: { icon: React.ReactNode; label: string; card: string; badge: BadgeVariant; badgeText: string; barColor: string } = {
+    pending: {
+      icon:      <Clock className="h-4.5 w-4.5 text-amber-500" />,
+      label:     'Queued for Processing',
+      card:      'border-amber-100 bg-amber-50/30 shadow-sm',
+      badge:     'warning' as BadgeVariant,
+      badgeText: 'Pending',
+      barColor:  'bg-amber-400',
+    },
+    processing: {
+      icon:      <Loader2 className="h-4.5 w-4.5 text-indigo-500 animate-spin" />,
+      label:     'Processing Videos',
+      card:      'border-indigo-100 bg-indigo-50/20 shadow-sm',
+      badge:     'secondary' as BadgeVariant,
+      badgeText: `${status.processedVideos} / ${status.totalVideos}`,
+      barColor:  'bg-indigo-500',
+    },
+    completed: {
+      icon:      <CheckCircle2 className="h-4.5 w-4.5 text-green-500" />,
+      label:     hasFailedVideos ? 'Completed with errors' : 'Import complete',
+      card:      hasFailedVideos ? 'border-orange-100 bg-orange-50/20 shadow-sm' : 'border-green-100 bg-green-50/20 shadow-sm',
+      badge:     (hasFailedVideos ? 'warning' : 'success') as BadgeVariant,
+      badgeText: `${status.processedVideos} / ${status.totalVideos} done`,
+      barColor:  'bg-green-500',
+    },
+    failed: {
+      icon:      <XCircle className="h-4.5 w-4.5 text-red-500" />,
+      label:     'Import failed',
+      card:      'border-red-100 bg-red-50/20 shadow-sm',
+      badge:     'destructive' as BadgeVariant,
+      badgeText: 'Failed',
+      barColor:  'bg-red-500',
+    },
+  }[status.status];
 
-  const getStatusColor = () => {
-    switch (status.status) {
-      case 'completed':
-        return 'bg-green-50 border-green-200';
-      case 'failed':
-        return 'bg-red-50 border-red-200';
-      case 'pending':
-        return 'bg-yellow-50 border-yellow-200';
-      default:
-        return 'bg-blue-50 border-blue-200';
-    }
-  };
+  // Build unified video list: active → queued → completed → failed
+  const failedVideoIds = new Set((status.failedVideos ?? []).map(v => v.videoId));
+  const completedVideoIds = new Set((status.completedVideos ?? []).map(v => v.videoId));
 
-  const getTextColor = () => {
-    switch (status.status) {
-      case 'completed':
-        return 'text-green-800';
-      case 'failed':
-        return 'text-red-800';
-      case 'pending':
-        return 'text-yellow-800';
-      default:
-        return 'text-blue-800';
-    }
-  };
+  const allVideos: UnifiedVideo[] = [
+    // Active / in-flight videos (skip any that are now tracked as completed or failed)
+    ...(status.activeVideos ?? []).filter(v => !failedVideoIds.has(v.videoId) && !completedVideoIds.has(v.videoId)).map(v => {
+      let state: VideoState;
+      if (v.progress >= 100) state = 'completed-video';
+      else if (v.progress > 0) state = 'active';
+      else                     state = 'queued';
+      return {
+        videoId:    v.videoId,
+        title:      v.title,
+        state,
+        progress:   v.progress,
+        statusText: v.status,
+        isLive:     v.isLive,
+      };
+    }),
+    // Still queued (not yet activated)
+    ...(status.queuedVideos ?? []).map(v => ({
+      videoId: v.videoId,
+      title:   v.title,
+      state:   'queued' as VideoState,
+    })),
+    // Successfully completed videos
+    ...(status.completedVideos ?? []).map(v => ({
+      videoId:  v.videoId,
+      title:    v.title,
+      state:    'completed-video' as VideoState,
+      progress: 100,
+    })),
+    // Failed videos
+    ...(status.failedVideos ?? []).map(v => ({
+      videoId: v.videoId,
+      title:   v.title,
+      state:   'failed-video' as VideoState,
+      reason:  v.reason,
+    })),
+  ];
 
-  const handleCancelClick = () => {
-    setShowCancelConfirm(true);
-  };
-
-  const handleConfirmCancel = () => {
-    if (onCancel && status) {
-      onCancel(status.jobId);
-    }
-    setShowCancelConfirm(false);
-  };
+  const hasVideos = allVideos.length > 0;
 
   return (
-    <>
-      <ConfirmDialog
-        isOpen={showCancelConfirm}
-        title="Cancel Import?"
-        message="This will stop the import process and remove all queued videos. Videos that have already been processed will remain. This action cannot be undone."
-        confirmLabel="Yes, Cancel Import"
-        cancelLabel="Keep Running"
-        variant="danger"
-        onConfirm={handleConfirmCancel}
-        onCancel={() => setShowCancelConfirm(false)}
-      />
+    <Card className={cn('transition-all', cfg.card)}>
+      <CardContent className="pt-4 pb-4 space-y-3">
 
-      <div className={`border rounded-lg p-6 mb-4 ${getStatusColor()}`}>
-        {/* Header with icon and status */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            {getStatusIcon()}
-            <div>
-              <h3 className={`font-semibold ${getTextColor()}`}>
-                {getStatusText()}
-              </h3>
-              {status.totalVideos > 0 && status.status === 'processing' && (
-                <p className="text-sm text-gray-600 mt-0.5">
-                  {status.activeVideos?.length || 0} videos processing now...
-                </p>
-              )}
-            </div>
+        {/* Header */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            {cfg.icon}
+            <span className="font-semibold text-sm text-zinc-900 truncate">{cfg.label}</span>
           </div>
-          <div className="flex items-center gap-4">
-            {status.totalVideos > 0 && (
-              <div className="text-right">
-                <div className={`text-2xl font-bold ${getTextColor()}`}>
-                  {status.processedVideos}<span className="text-lg text-gray-500">/{status.totalVideos}</span>
-                </div>
-                <div className="text-xs text-gray-600">completed</div>
-              </div>
-            )}
-            {/* Cancel button - only show for pending/processing */}
-            {onCancel && (status.status === 'pending' || status.status === 'processing') && (
+
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Badge variant={cfg.badge}>{cfg.badgeText}</Badge>
+
+            {onCancelRequest && isActive && (
               <button
-                onClick={handleCancelClick}
-                className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                onClick={onCancelRequest}
+                className="p-1.5 rounded-md text-zinc-400 hover:text-red-500 hover:bg-red-50 transition-colors"
                 title="Cancel import"
               >
-                <X className="h-5 w-5" />
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+            {onDismiss && (isFailed || isCompleted) && (
+              <button
+                onClick={onDismiss}
+                className="p-1.5 rounded-md text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 transition-colors"
+                title="Dismiss"
+              >
+                <X className="h-3.5 w-3.5" />
               </button>
             )}
           </div>
         </div>
 
-        {/* Progress bar */}
-        {status.totalVideos > 0 && status.status !== 'completed' && (
-        <div className="mb-4">
-          <div className="w-full bg-white rounded-full h-3 overflow-hidden shadow-inner">
-            <div
-              className="h-3 bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-500 ease-out rounded-full"
-              style={{ width: `${getProgressPercentage()}%` }}
-            />
-          </div>
-          <div className="flex justify-between mt-1.5 text-xs text-gray-600">
-            <span>{getProgressPercentage()}% complete</span>
-            <span>{status.totalVideos - status.processedVideos} remaining</span>
-          </div>
-        </div>
-      )}
-
-      {/* Error display */}
-      {status.error && (
-        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg border border-red-200">
-          <strong>Error:</strong> {status.error}
-        </div>
-      )}
-
-      {/* Helpful message */}
-      {status.status === 'processing' && status.totalVideos > 0 && (
-        <p className="text-sm text-gray-600 mb-4">
-          💡 New episodes will appear below as they complete. Videos take 5-15 minutes each to process.
-        </p>
-      )}
-
-      {/* Details section (collapsible) */}
-      {((status.activeVideos?.length ?? 0) > 0 || (status.queuedVideos?.length ?? 0) > 0 || (status.failedVideos?.length ?? 0) > 0) && (
-        <div className="mt-4 border-t border-gray-300 pt-4">
-          <button
-            onClick={() => setShowDetails(!showDetails)}
-            className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
-          >
-            {showDetails ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            <span>
-              {showDetails ? 'Hide' : 'Show'} processing details
-              {status.failedVideos?.length > 0 && ` (${status.failedVideos.length} failed)`}
-            </span>
-          </button>
-
-          {showDetails && (
-            <div className="mt-4 space-y-3">
-              {/* Active videos */}
-              {status.activeVideos && status.activeVideos.length > 0 && (
-                <div>
-                  <div className="text-xs font-semibold text-gray-700 mb-2">
-                    ⏳ Currently Processing:
-                  </div>
-                  <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {status.activeVideos.map((video) => (
-                      <div key={video.videoId} className="bg-white rounded-lg p-3 border border-gray-200">
-                        <div className="flex items-center justify-between mb-2">
-                          <a
-                            href={`https://www.youtube.com/watch?v=${video.videoId}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-blue-600 hover:underline font-medium truncate max-w-sm"
-                            title={video.title || video.videoId}
-                          >
-                            {video.title || video.videoId}
-                          </a>
-                          <span className="text-xs font-semibold text-blue-600">{video.progress}%</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-1.5 mb-2">
-                          <div
-                            className="h-1.5 bg-blue-600 rounded-full transition-all duration-300"
-                            style={{ width: `${video.progress}%` }}
-                          />
-                        </div>
-                        <div className="text-xs text-gray-600">{video.status}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Queued videos */}
-              {status.queuedVideos && status.queuedVideos.length > 0 && (
-                <div className="mt-3">
-                  <div className="text-xs font-semibold text-gray-700 mb-2">
-                    📋 Queued ({status.queuedVideos.length}):
-                  </div>
-                  <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {status.queuedVideos.map((video) => (
-                      <div key={video.videoId} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                        <div className="flex items-center justify-between">
-                          <a
-                            href={`https://www.youtube.com/watch?v=${video.videoId}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-blue-600 hover:underline font-medium truncate flex-1"
-                            title={video.title || video.videoId}
-                          >
-                            {video.title || video.videoId}
-                          </a>
-                          <span className="text-xs text-gray-500 ml-2">0%</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
-                          <div className="h-1.5 bg-gray-400 rounded-full" style={{ width: '0%' }} />
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">Pending...</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Failed videos */}
-              {status.failedVideos && status.failedVideos.length > 0 && (
-                <div className="mt-4">
-                  <div className="text-xs font-semibold text-red-700 mb-2">
-                    ⚠️ Failed Videos ({status.failedVideos.length}):
-                  </div>
-                  <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {status.failedVideos.map((video) => (
-                      <div key={video.videoId} className="bg-red-50 rounded-lg p-3 border border-red-200">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1 min-w-0 pr-3">
-                            <a
-                              href={`https://www.youtube.com/watch?v=${video.videoId}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-sm font-medium text-gray-900 hover:text-blue-600 hover:underline block truncate"
-                            >
-                              {video.title}
-                            </a>
-                            <div className="text-xs text-gray-500 font-mono mt-1">{video.videoId}</div>
-                          </div>
-                          <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded whitespace-nowrap">
-                            {video.reason}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+        {/* Overall progress bar — active jobs only */}
+        {isActive && status.totalVideos > 0 && (
+          <div className="space-y-1">
+            <Progress value={pct} className="h-1.5" indicatorClassName={cfg.barColor} />
+            <div className="flex justify-between text-[11px] text-zinc-400 tabular-nums">
+              <span>{pct}% complete</span>
+              <span>{status.totalVideos - status.processedVideos} remaining</span>
             </div>
-          )}
-        </div>
-      )}
-    </div>
-    </>
+          </div>
+        )}
+
+        {/* Error banner */}
+        {status.error && (
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">
+            <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+            <span>{status.error}</span>
+          </div>
+        )}
+
+        {/* Video list — open by default while active, collapsible when done */}
+        {hasVideos && (
+          <Accordion type="single" collapsible defaultValue={isActive ? 'videos' : undefined}>
+            <AccordionItem value="videos">
+              <AccordionTrigger>
+                <span className="flex items-center gap-2 text-xs text-zinc-500">
+                  Video details
+                  {hasFailedVideos && (
+                    <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                      {status.failedVideos.length} failed
+                    </Badge>
+                  )}
+                </span>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="max-h-72 overflow-y-auto scrollbar-thin space-y-0 pr-0.5">
+                  <AnimatedList className="gap-1.5">
+                    {allVideos.map(video => (
+                      <VideoRow key={`${video.videoId}-${video.state}`} video={video} />
+                    ))}
+                  </AnimatedList>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        )}
+
+      </CardContent>
+    </Card>
   );
 }

@@ -121,7 +121,9 @@ export const agentsApi = {
     createdAt: string;
     updatedAt: string;
   }> => {
+    console.log(`[agentsApi] 📡 GET /agents/${id}/backfill/${jobId}`);
     const { data } = await apiClient.get(`/agents/${id}/backfill/${jobId}`);
+    console.log(`[agentsApi] ✅ Response for job ${jobId}:`, data);
     return data;
   },
 
@@ -136,13 +138,25 @@ export const agentsApi = {
     createdAt: string;
     updatedAt: string;
   }>> => {
+    console.log(`[agentsApi] 📡 GET /agents/${id}/backfill`);
     const { data } = await apiClient.get(`/agents/${id}/backfill`);
+    console.log(`[agentsApi] ✅ Response - ${data.length} backfill jobs:`, data);
     return data;
   },
 
   // Cancel backfill job
   cancelBackfill: async (id: string, jobId: string): Promise<void> => {
     await apiClient.delete(`/agents/${id}/backfill/${jobId}`);
+  },
+
+  // SSE URL for real-time progress of a single video processing job
+  getVideoProgressStreamUrl: (agentId: string, videoId: string): string => {
+    return `${apiClient.defaults.baseURL}/progress/${agentId}_${videoId}/stream`;
+  },
+
+  // SSE URL for real-time backfill job list updates
+  getBackfillStreamUrl: (agentId: string): string => {
+    return `${apiClient.defaults.baseURL}/agents/${agentId}/backfill/stream`;
   },
 
   // Get total episode count

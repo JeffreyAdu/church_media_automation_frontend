@@ -1,6 +1,7 @@
+import { Link } from 'react-router-dom';
 import { useAgents } from '../hooks/useAgents';
 import { useEpisodeCount } from '../hooks/useEpisodeCount';
-import { Radio, FileAudio } from 'lucide-react';
+import { Radio, FileAudio, ArrowRight } from 'lucide-react';
 
 export default function Dashboard() {
   const { data: agents, isLoading } = useAgents();
@@ -57,21 +58,19 @@ export default function Dashboard() {
           ) : (
             <div className="space-y-4">
               {agents.map((agent) => (
-                <div
+                <Link
                   key={agent.id}
-                  className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
+                  to={`/app/agents/${agent.id}`}
+                  className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors group"
                 >
-                  <div>
-                    <h3 className="font-medium text-gray-900">{agent.name}</h3>
-                    <p className="text-sm text-gray-600 mt-1">{agent.podcast_title || 'No title set'}</p>
+                  <div className="min-w-0 flex-1 mr-3">
+                    <h3 className="font-medium text-gray-900 group-hover:text-blue-700 truncate">{agent.name}</h3>
+                    <p className="text-sm text-gray-500 mt-0.5 truncate">{agent.podcast_title || 'No title set'}</p>
                   </div>
-                  <a
-                    href={`/agents/${agent.id}`}
-                    className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                  >
-                    View Details →
-                  </a>
-                </div>
+                  <span className="flex items-center gap-1 text-sm text-blue-600 font-medium shrink-0">
+                    View <ArrowRight className="h-4 w-4" />
+                  </span>
+                </Link>
               ))}
             </div>
           )}

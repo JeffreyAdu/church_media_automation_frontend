@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Calendar, Loader2, X, CheckCircle } from 'lucide-react';
+import { Calendar, Loader2, X, CheckCircle, Info } from 'lucide-react';
 
 interface BackfillStatus {
   jobId: string;
@@ -34,7 +34,7 @@ export default function BackfillDialog({
 
   const getProgressPercentage = () => {
     if (!backfillStatus || backfillStatus.totalVideos === 0) return 0;
-    return Math.round((backfillStatus.processedVideos / backfillStatus.totalVideos) * 100);
+    return Math.round((backfillStatus.enqueuedVideos / backfillStatus.totalVideos) * 100);
   };
 
   const handleClose = () => {
@@ -127,7 +127,7 @@ export default function BackfillDialog({
 
             <div className="mt-4 pt-4 border-t border-gray-200">
               <p className="text-xs text-gray-500">
-                💡 <strong>Tip:</strong> This is a one-time import. New videos will be automatically processed going forward.
+                <Info className="inline h-3.5 w-3.5 mr-1 flex-shrink-0" /><strong>Tip:</strong> This is a one-time import. New videos will be automatically processed going forward.
               </p>
             </div>
           </>
@@ -168,8 +168,8 @@ export default function BackfillDialog({
             {backfillStatus.totalVideos > 0 && (
               <div>
                 <div className="flex justify-between text-sm text-gray-600 mb-2">
-                  <span>Scanning videos...</span>
-                  <span>{backfillStatus.processedVideos} / {backfillStatus.totalVideos}</span>
+                  <span>Queuing videos…</span>
+                  <span>{backfillStatus.enqueuedVideos} / {backfillStatus.totalVideos}</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div
@@ -212,7 +212,7 @@ export default function BackfillDialog({
             {/* Background processing message */}
             {(backfillStatus.status === 'pending' || backfillStatus.status === 'processing') && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700">
-                💡 You can close this dialog. The import will continue in the background and episodes will appear as they're processed.
+                <Info className="inline h-3.5 w-3.5 mr-1 flex-shrink-0" />You can close this dialog. The import will continue in the background and episodes will appear as they're processed.
               </div>
             )}
           </div>
