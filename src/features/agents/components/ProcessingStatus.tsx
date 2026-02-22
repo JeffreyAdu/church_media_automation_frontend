@@ -181,7 +181,7 @@ export default function ProcessingStatus({
   const cfg: { icon: React.ReactNode; label: string; card: string; badge: BadgeVariant; badgeText: string; barColor: string } = {
     pending: {
       icon:      <Clock className="h-4.5 w-4.5 text-amber-500" />,
-      label:     'Queued for Processing',
+      label:     'Import scheduled',
       card:      'border-amber-100 bg-amber-50/30 shadow-sm',
       badge:     'warning' as BadgeVariant,
       badgeText: 'Pending',
@@ -189,7 +189,7 @@ export default function ProcessingStatus({
     },
     processing: {
       icon:      <Loader2 className="h-4.5 w-4.5 text-indigo-500 animate-spin" />,
-      label:     'Processing Videos',
+      label:     'Scanning & queueing videos',
       card:      'border-indigo-100 bg-indigo-50/20 shadow-sm',
       badge:     'secondary' as BadgeVariant,
       badgeText: `${status.processedVideos} / ${status.totalVideos}`,
@@ -197,10 +197,10 @@ export default function ProcessingStatus({
     },
     completed: {
       icon:      <CheckCircle2 className="h-4.5 w-4.5 text-green-500" />,
-      label:     hasFailedVideos ? 'Queued with errors' : 'All videos queued',
+      label:     hasFailedVideos ? 'Import complete — some videos failed to enqueue' : 'Import complete',
       card:      hasFailedVideos ? 'border-orange-100 bg-orange-50/20 shadow-sm' : 'border-green-100 bg-green-50/20 shadow-sm',
       badge:     (hasFailedVideos ? 'warning' : 'success') as BadgeVariant,
-      badgeText: `${status.processedVideos} / ${status.totalVideos} queued`,
+      badgeText: `${status.processedVideos} / ${status.totalVideos} enqueued`,
       barColor:  'bg-green-500',
     },
     failed: {
@@ -220,16 +220,13 @@ export default function ProcessingStatus({
   const allVideos: UnifiedVideo[] = [
     // Active / in-flight videos (skip any that are now tracked as completed or failed)
     ...(status.activeVideos ?? []).filter(v => !failedVideoIds.has(v.videoId) && !completedVideoIds.has(v.videoId)).map(v => {
-      let state: VideoState;
-      if (v.progress >= 100) state = 'completed-video';
-      else if (v.progress > 0) state = 'active';
-      else                     state = 'queued';
+      const state: VideoState = v.progress >= 100 ? 'completed-video' : 'active';
       return {
         videoId:    v.videoId,
         title:      v.title,
         state,
         progress:   v.progress,
-        statusText: v.status,
+        statusText: v.status || undefined,
         isLive:     v.isLive,
       };
     }),

@@ -179,10 +179,11 @@ export const useBackfillManager = (agentId: string, backfillJobs: any[] = []) =>
     [backfillJobs]
   );
 
-  // Flat list of all YouTube video IDs being processed — derived from SSE data, no polling needed
+  // Flat list of all YouTube video IDs being processed — derived from SSE data, no polling needed.
+  // Intentionally NOT filtered by backfill job status: the backfill job goes "completed" as soon
+  // as all videos are enqueued, but the actual video downloads/transcoding run for hours after.
   const allActiveVideoIds = useMemo(() => {
     const ids = backfillJobs
-      .filter((job: any) => job.status === 'pending' || job.status === 'processing')
       .flatMap((job: any) => (job.activeVideoIds ?? []) as string[]);
     return [...new Set(ids)];
   }, [backfillJobs]);

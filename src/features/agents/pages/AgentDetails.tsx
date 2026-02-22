@@ -48,8 +48,9 @@ export default function AgentDetails() {
           const live = sseProgress[videoId];
           return {
             videoId,
+            title: job.activeVideoTitles?.[videoId] ?? undefined,
             progress: live?.progress ?? 0,
-            status:   live?.status   ?? 'Queued...',
+            status:   live?.status   ?? '',
             isLive:   live?.isConnected ?? false,
           };
         }),

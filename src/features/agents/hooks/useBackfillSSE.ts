@@ -14,6 +14,7 @@ export interface BackfillJobSummary {
   processedVideos: number;
   enqueuedVideos: number;
   activeVideoIds: string[];
+  activeVideoTitles: Record<string, string | null>;
   completedVideos: Array<{ videoId: string; title: string }>;
   queuedVideos: Array<{ videoId: string; title: string }>;
   failedVideos: FailedVideoSummary[];
