@@ -197,10 +197,10 @@ export default function ProcessingStatus({
     },
     completed: {
       icon:      <CheckCircle2 className="h-4.5 w-4.5 text-green-500" />,
-      label:     hasFailedVideos ? 'Completed with errors' : 'Import complete',
+      label:     hasFailedVideos ? 'Queued with errors' : 'All videos queued',
       card:      hasFailedVideos ? 'border-orange-100 bg-orange-50/20 shadow-sm' : 'border-green-100 bg-green-50/20 shadow-sm',
       badge:     (hasFailedVideos ? 'warning' : 'success') as BadgeVariant,
-      badgeText: `${status.processedVideos} / ${status.totalVideos} done`,
+      badgeText: `${status.processedVideos} / ${status.totalVideos} queued`,
       barColor:  'bg-green-500',
     },
     failed: {
@@ -263,9 +263,14 @@ export default function ProcessingStatus({
 
         {/* Header */}
         <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 min-w-0">
-            {cfg.icon}
-            <span className="font-semibold text-sm text-zinc-900 truncate">{cfg.label}</span>
+          <div className="flex flex-col min-w-0 gap-0.5">
+            <div className="flex items-center gap-2">
+              {cfg.icon}
+              <span className="font-semibold text-sm text-zinc-900 truncate">{cfg.label}</span>
+            </div>
+            {isCompleted && (
+              <p className="text-xs text-zinc-400 pl-6 leading-tight">Episodes will appear below as each video finishes processing</p>
+            )}
           </div>
 
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -311,9 +316,9 @@ export default function ProcessingStatus({
           </div>
         )}
 
-        {/* Video list — open by default while active, collapsible when done */}
+        {/* Video list — always open by default */}
         {hasVideos && (
-          <Accordion type="single" collapsible defaultValue={isActive ? 'videos' : undefined}>
+          <Accordion type="single" collapsible defaultValue="videos">
             <AccordionItem value="videos">
               <AccordionTrigger>
                 <span className="flex items-center gap-2 text-xs text-zinc-500">

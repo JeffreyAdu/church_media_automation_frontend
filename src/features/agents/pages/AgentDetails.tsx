@@ -445,8 +445,15 @@ export default function AgentDetails() {
             )}
 
             {episodes.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">
-                No episodes yet. Episodes will appear here when videos are processed.
+              <div className="text-center py-12 text-gray-400">
+                {backfillJobs.length > 0 ? (
+                  <>
+                    <p className="text-sm font-medium text-gray-500">Videos are being processed</p>
+                    <p className="text-xs mt-1">Episodes will appear here one by one as each video finishes downloading and transcoding. Large videos may take 30–60 minutes each.</p>
+                  </>
+                ) : (
+                  <p className="text-sm">No episodes yet. Import videos using the button above to get started.</p>
+                )}
               </div>
             ) : (
               <div className="space-y-4">
