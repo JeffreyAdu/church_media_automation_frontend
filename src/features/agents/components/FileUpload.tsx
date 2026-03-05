@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Upload, X, Loader2 } from 'lucide-react';
+import { useState } from "react";
+import { Upload, X, Loader2 } from "lucide-react";
 
 interface FileUploadProps {
   label: string;
@@ -32,16 +32,16 @@ export default function FileUpload({
     }
 
     // Validate file type
-    const acceptedTypes = accept.split(',').map((t) => t.trim());
+    const acceptedTypes = accept.split(",").map((t) => t.trim());
     const isValidType = acceptedTypes.some((type) => {
-      if (type.endsWith('/*')) {
-        return file.type.startsWith(type.replace('/*', ''));
+      if (type.endsWith("/*")) {
+        return file.type.startsWith(type.replace("/*", ""));
       }
       return file.type === type;
     });
 
     if (!isValidType) {
-      setError('Invalid file type');
+      setError("Invalid file type");
       return;
     }
 
@@ -50,7 +50,7 @@ export default function FileUpload({
       await onUpload(file);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed');
+      setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setIsUploading(false);
     }
@@ -80,7 +80,7 @@ export default function FileUpload({
       await onDelete();
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Delete failed');
+      setError(err instanceof Error ? err.message : "Delete failed");
     } finally {
       setIsUploading(false);
     }
@@ -88,13 +88,17 @@ export default function FileUpload({
 
   return (
     <div className="space-y-2">
-      <label className="block text-sm font-medium text-gray-700">{label}</label>
+      <label className="block text-sm font-medium text-gray-300">{label}</label>
 
       {currentUrl ? (
         <div className="space-y-3">
-          <div className="flex items-center gap-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
-            {accept.includes('image') ? (
-              <img src={currentUrl} alt="Preview" className="w-20 h-20 rounded object-cover" />
+          <div className="flex items-center gap-4 p-4 border border-white/5 rounded-xl bg-white/[0.03]">
+            {accept.includes("image") ? (
+              <img
+                src={currentUrl}
+                alt="Preview"
+                className="w-20 h-20 rounded-lg object-cover"
+              />
             ) : (
               <audio src={currentUrl} controls className="flex-1" />
             )}
@@ -102,9 +106,13 @@ export default function FileUpload({
               <button
                 onClick={handleDeleteClick}
                 disabled={isUploading}
-                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
               >
-                {isUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <X className="h-5 w-5" />}
+                {isUploading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <X className="h-5 w-5" />
+                )}
               </button>
             )}
           </div>
@@ -118,9 +126,9 @@ export default function FileUpload({
             />
             <button
               disabled={isUploading}
-              className="w-full px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50 text-sm font-medium"
+              className="w-full px-4 py-2.5 border border-orange-500/30 text-orange-500 rounded-xl hover:bg-orange-500/5 transition-colors disabled:opacity-50 text-sm font-medium"
             >
-              {isUploading ? 'Uploading...' : 'Replace File'}
+              {isUploading ? "Uploading..." : "Replace File"}
             </button>
           </div>
         </div>
@@ -132,8 +140,10 @@ export default function FileUpload({
           }}
           onDragLeave={() => setIsDragging(false)}
           onDrop={handleDrop}
-          className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-            isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+          className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
+            isDragging
+              ? "border-orange-500 bg-orange-500/5"
+              : "border-white/10 hover:border-white/20"
           }`}
         >
           <input
@@ -144,18 +154,18 @@ export default function FileUpload({
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
           />
           {isUploading ? (
-            <Loader2 className="h-12 w-12 text-gray-400 mx-auto mb-4 animate-spin" />
+            <Loader2 className="h-12 w-12 text-gray-600 mx-auto mb-4 animate-spin" />
           ) : (
-            <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <Upload className="h-12 w-12 text-gray-600 mx-auto mb-4" />
           )}
-          <p className="text-sm text-gray-600 mb-1">
-            {isUploading ? 'Uploading...' : 'Drop file here or click to browse'}
+          <p className="text-sm text-gray-400 mb-1">
+            {isUploading ? "Uploading..." : "Drop file here or click to browse"}
           </p>
-          <p className="text-xs text-gray-500">Max size: {maxSize}MB</p>
+          <p className="text-xs text-gray-600">Max size: {maxSize}MB</p>
         </div>
       )}
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-red-400">{error}</p>}
     </div>
   );
 }

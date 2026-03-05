@@ -1,42 +1,82 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useAgent, useAgentEpisodes, useUploadArtwork, useUploadIntro, useUploadOutro, useDeleteAgent, useBackfillManager, useUpdateAgent } from '../hooks/useAgents';
-import { useActiveVideoSSE } from '../hooks/useActiveVideoSSE';
-import { useBackfillSSE } from '../hooks/useBackfillSSE';
-import FileUpload from '../components/FileUpload';
-import RssFeedDisplay from '../components/RssFeedDisplay';
-import AgentEditForm from '../components/AgentEditForm';
-import SetupChecklist from '../components/SetupChecklist';
-import BackfillDialog from '../components/BackfillDialog';
-import ProcessingStatus from '../components/ProcessingStatus';
-import ConfirmDialog from '../components/ConfirmDialog';
-import { AnimatedList } from '@/shared/components/ui/animated-list';
-import { ArrowLeft, Settings, FileAudio, Radio, Rss, Calendar, Trash2, AlertTriangle, Clock, ExternalLink, Loader2, FileText, CheckCircle2 } from 'lucide-react';
+import { useState, useEffect, useMemo, useRef } from "react";
+import { useParams, Link, useNavigate, Navigate } from "react-router-dom";
+import {
+  useAgent,
+  useAgentEpisodes,
+  useUploadArtwork,
+  useUploadIntro,
+  useUploadOutro,
+  useDeleteAgent,
+  useBackfillManager,
+  useUpdateAgent,
+} from "../hooks/useAgents";
+import { useActiveVideoSSE } from "../hooks/useActiveVideoSSE";
+import { useBackfillSSE } from "../hooks/useBackfillSSE";
+import FileUpload from "../components/FileUpload";
+import RssFeedDisplay from "../components/RssFeedDisplay";
+import AgentEditForm from "../components/AgentEditForm";
+import SetupChecklist from "../components/SetupChecklist";
+import BackfillDialog from "../components/BackfillDialog";
+import ProcessingStatus from "../components/ProcessingStatus";
+import ConfirmDialog from "../components/ConfirmDialog";
+import { AnimatedList } from "@/shared/components/ui/animated-list";
+import {
+  ArrowLeft,
+  Settings,
+  FileAudio,
+  Radio,
+  Rss,
+  Calendar,
+  Trash2,
+  AlertTriangle,
+  Clock,
+  ExternalLink,
+  Loader2,
+  FileText,
+  CheckCircle2,
+} from "lucide-react";
 
-type TabType = 'overview' | 'media' | 'episodes' | 'rss';
+type TabType = "overview" | "media" | "episodes" | "rss";
 
 export default function AgentDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<TabType>('overview');
+
+  if (!id) {
+    return <Navigate to="/app/agents" replace />;
+  }
+
+  return <AgentDetailsContent id={id} navigate={navigate} />;
+}
+
+function AgentDetailsContent({
+  id,
+  navigate,
+}: {
+  id: string;
+  navigate: ReturnType<typeof useNavigate>;
+}) {
+  const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [showBackfill, setShowBackfill] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [cancelJobId, setCancelJobId] = useState<string | null>(null);
   const [dismissJobId, setDismissJobId] = useState<string | null>(null);
-  const [dismissedFailedIds, setDismissedFailedIds] = useState<Set<string>>(new Set());
+  const [dismissedFailedIds, setDismissedFailedIds] = useState<Set<string>>(
+    new Set(),
+  );
   const [canScrollRight, setCanScrollRight] = useState(false);
   const tabScrollRef = useRef<HTMLDivElement>(null);
   const rssTabRef = useRef<HTMLButtonElement>(null);
-  
-  const { data: agent, isLoading, error, refetch } = useAgent(id!);
-  const { data: episodesData, refetch: refetchEpisodes } = useAgentEpisodes(id!);
+
+  const { data: agent, isLoading, error, refetch } = useAgent(id);
+  const { data: episodesData, refetch: refetchEpisodes } = useAgentEpisodes(id);
 
   // SSE-driven job list — replaces polling entirely
-  const { jobs: backfillJobs } = useBackfillSSE(id!);
-  const backfillManager = useBackfillManager(id!, backfillJobs);
+  const { jobs: backfillJobs } = useBackfillSSE(id);
+  const backfillManager = useBackfillManager(id, backfillJobs);
 
   // SSE connections for every actively-processing video — lives at page level per architecture rule
-  const sseProgress = useActiveVideoSSE(id!, backfillManager.allActiveVideoIds);
+  const sseProgress = useActiveVideoSSE(id, backfillManager.allActiveVideoIds);
 
   // Build job statuses entirely from SSE data — no REST polling
   const jobStatuses = useMemo(() => {
@@ -50,43 +90,50 @@ export default function AgentDetails() {
             videoId,
             title: job.activeVideoTitles?.[videoId] ?? undefined,
             progress: live?.progress ?? 0,
-            status:   live?.status   ?? '',
-            isLive:   live?.isConnected ?? false,
+            status: live?.status ?? "",
+            isLive: live?.isConnected ?? false,
           };
         }),
       };
     }
     return result;
   }, [backfillJobs, sseProgress]);
-  
+
   const uploadArtwork = useUploadArtwork();
   const uploadIntro = useUploadIntro();
   const uploadOutro = useUploadOutro();
   const deleteAgent = useDeleteAgent();
   const updateAgent = useUpdateAgent();
-  
+
   // Safely extract episodes array from response
   const episodes = Array.isArray(episodesData) ? episodesData : [];
 
   // Jobs the user should see — dismissed via explicit user action only, no auto-dismiss
-  const visibleJobs = useMemo(() =>
-    backfillJobs.filter(job => {
-      if (job.status === 'pending' || job.status === 'processing') return true;
-      if (job.status === 'failed') return !dismissedFailedIds.has(job.jobId);
-      if (job.status === 'completed') return !dismissedFailedIds.has(job.jobId);
-      return false;
-    }),
-    [backfillJobs, dismissedFailedIds]
+  const visibleJobs = useMemo(
+    () =>
+      backfillJobs.filter((job) => {
+        if (job.status === "pending" || job.status === "processing")
+          return true;
+        if (job.status === "failed") return !dismissedFailedIds.has(job.jobId);
+        if (job.status === "completed")
+          return !dismissedFailedIds.has(job.jobId);
+        return false;
+      }),
+    [backfillJobs, dismissedFailedIds],
   );
 
   // Refetch episodes the moment any video completes — SSE-driven, no polling
-  const completedCount = useMemo(() =>
-    backfillJobs.reduce((sum, job) => sum + (job.completedVideos?.length ?? 0), 0),
-    [backfillJobs]
+  const completedCount = useMemo(
+    () =>
+      backfillJobs.reduce(
+        (sum, job) => sum + (job.completedVideos?.length ?? 0),
+        0,
+      ),
+    [backfillJobs],
   );
   useEffect(() => {
     if (completedCount > 0) refetchEpisodes();
-  }, [completedCount]);
+  }, [completedCount, refetchEpisodes]);
 
   // Show pill whenever the RSS tab button is not fully visible in the scroll container
   useEffect(() => {
@@ -94,7 +141,7 @@ export default function AgentDetails() {
     if (!btn) return;
     const io = new IntersectionObserver(
       ([entry]) => setCanScrollRight(!entry.isIntersecting),
-      { root: tabScrollRef.current, threshold: 1.0 }
+      { root: tabScrollRef.current, threshold: 1.0 },
     );
     io.observe(btn);
     return () => io.disconnect();
@@ -102,56 +149,50 @@ export default function AgentDetails() {
 
   const handleBackfillSubmit = async (date: string) => {
     await backfillManager.startBackfill(date);
+    setShowBackfill(false);
+    setActiveTab("episodes");
   };
 
   const handleCancelBackfill = async (jobId: string) => {
     if (!agent) return;
-    
+
     try {
       await backfillManager.cancelBackfill(jobId);
       // Refetch to update the UI
       refetch();
       refetchEpisodes();
     } catch (error) {
-      console.error('Failed to cancel backfill:', error);
+      console.error("Failed to cancel backfill:", error);
     }
   };
 
   const handleUpdateAgent = async (data: any) => {
     try {
-      await updateAgent.mutateAsync({ id: id!, input: data });
+      await updateAgent.mutateAsync({ id: id, input: data });
     } catch (error) {
-      console.error('Failed to update agent:', error);
+      console.error("Failed to update agent:", error);
     }
   };
 
   const handleDelete = async () => {
     try {
-      await deleteAgent.mutateAsync(id!);
-      navigate('/app/agents');
+      await deleteAgent.mutateAsync(id);
+      navigate("/app/agents");
     } catch (error) {
-      console.error('Failed to delete channel:', error);
+      console.error("Failed to delete channel:", error);
     }
   };
 
-  // Close dialog once all videos are enqueued — driven by SSE, not REST poll
-  useEffect(() => {
-    if (!showBackfill || !backfillManager.currentJobId) return;
-    const job = backfillJobs.find(j => j.jobId === backfillManager.currentJobId);
-    if (!job || job.totalVideos === 0) return;
-    if (job.enqueuedVideos >= job.totalVideos) {
-      setShowBackfill(false);
-    }
-  }, [backfillJobs, showBackfill, backfillManager.currentJobId]);
-
   // Refresh episodes list when job finishes — driven by SSE
   useEffect(() => {
-    const job = backfillJobs.find(j => j.jobId === backfillManager.currentJobId);
-    if (job?.status === 'completed') {
+    const job = backfillJobs.find(
+      (j) => j.jobId === backfillManager.currentJobId,
+    );
+    if (job?.status === "completed") {
       refetch();
       refetchEpisodes();
     }
-  }, [backfillJobs, backfillManager.currentJobId]);
+  }, [backfillJobs, backfillManager.currentJobId, refetch, refetchEpisodes]);
 
   // Debug log
   // (removed — no longer needed)
@@ -159,14 +200,14 @@ export default function AgentDetails() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-600">Loading...</div>
+        <Loader2 className="h-6 w-6 animate-spin text-orange-500" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+      <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-red-400">
         Error: {error.message}
       </div>
     );
@@ -174,17 +215,17 @@ export default function AgentDetails() {
 
   if (!agent) {
     return (
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-yellow-700">
+      <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 text-yellow-400">
         Channel not found
       </div>
     );
   }
 
   const tabs = [
-    { id: 'overview', label: 'Overview', icon: Settings },
-    { id: 'media', label: 'Media', icon: FileAudio },
-    { id: 'episodes', label: 'Episodes', icon: Radio },
-    { id: 'rss', label: 'RSS Feed', icon: Rss },
+    { id: "overview", label: "Overview", icon: Settings },
+    { id: "media", label: "Media", icon: FileAudio },
+    { id: "episodes", label: "Episodes", icon: Radio },
+    { id: "rss", label: "RSS Feed", icon: Rss },
   ] as const;
 
   return (
@@ -193,66 +234,72 @@ export default function AgentDetails() {
       <div>
         <Link
           to="/app/agents"
-          className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-4"
+          className="inline-flex items-center text-sm text-gray-500 hover:text-orange-500 mb-4 transition-colors"
         >
           <ArrowLeft className="h-4 w-4 mr-1" />
           Back to Channels
         </Link>
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{agent.name}</h1>
-            <p className="text-gray-600 mt-1">{agent.podcast_title || 'No podcast title set'}</p>
+            <h1 className="text-2xl font-bold text-white">{agent.name}</h1>
+            <p className="text-gray-500 mt-1">
+              {agent.podcast_title || "No podcast title set"}
+            </p>
           </div>
           <div className="flex items-center gap-3">
-            {agent.websub_status === 'error' && (
+            {agent.websub_status === "error" && (
               <div className="text-right">
-                <div className="text-xs text-red-600 mb-1">
+                <div className="text-xs text-red-400 mb-1">
                   YouTube notifications failed
                 </div>
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-gray-600">
                   Use Backfill to import videos manually
                 </div>
               </div>
             )}
             <span
               className={`px-3 py-1 text-sm font-medium rounded-full ${
-                agent.websub_status === 'subscribed'
-                  ? 'bg-green-100 text-green-700'
-                  : agent.websub_status === 'error'
-                  ? 'bg-red-100 text-red-700'
-                  : 'bg-gray-100 text-gray-700'
+                agent.websub_status === "subscribed"
+                  ? "bg-green-500/10 text-green-400 border border-green-500/20"
+                  : agent.websub_status === "error"
+                    ? "bg-red-500/10 text-red-400 border border-red-500/20"
+                    : "bg-white/5 text-gray-400 border border-white/10"
               }`}
             >
-              {agent.websub_status || 'pending'}
+              {(agent.websub_status || "pending").charAt(0).toUpperCase() +
+                (agent.websub_status || "pending").slice(1)}
             </span>
           </div>
         </div>
       </div>
 
       {/* Setup Checklist - Shows when setup is incomplete */}
-      <SetupChecklist 
+      <SetupChecklist
         agent={agent}
         episodes={episodes}
-        onUploadArtwork={() => setActiveTab('media')}
-        onViewRssFeed={() => setActiveTab('rss')}
-        onGoToBackfill={() => setActiveTab('episodes')}
+        onUploadArtwork={() => setActiveTab("media")}
+        onViewRssFeed={() => setActiveTab("rss")}
+        onGoToBackfill={() => setActiveTab("episodes")}
       />
 
       {/* Tabs */}
       <div className="relative">
-        <div ref={tabScrollRef} className="border-b border-gray-200 overflow-x-auto scrollbar-none">
+        <div
+          ref={tabScrollRef}
+          className="border-b border-white/5 overflow-x-auto scrollbar-none"
+        >
           <div className="flex gap-8 min-w-max">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
-                  ref={tab.id === 'rss' ? rssTabRef : null}
+                  ref={tab.id === "rss" ? rssTabRef : null}
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                     activeTab === tab.id
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      ? "border-orange-500 text-orange-500"
+                      : "border-transparent text-gray-500 hover:text-gray-300 hover:border-white/10"
                   }`}
                 >
                   <Icon className="h-5 w-5 mr-2" />
@@ -264,15 +311,18 @@ export default function AgentDetails() {
         </div>
         {/* Scroll hint pill — clickable, scrolls to end and activates RSS tab */}
         <div
-          className={`pointer-events-none absolute inset-y-0 right-0 flex items-center pr-1 pl-8 bg-gradient-to-l from-white via-white/90 to-transparent transition-all duration-300 ${
-            canScrollRight ? 'opacity-100' : 'opacity-0'
+          className={`pointer-events-none absolute inset-y-0 right-0 flex items-center pr-1 pl-8 bg-gradient-to-l from-[#0a0a0a] via-[#0a0a0a]/90 to-transparent transition-all duration-300 ${
+            canScrollRight ? "opacity-100" : "opacity-0"
           }`}
         >
           <button
-            className="pointer-events-auto flex items-center gap-1 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-semibold px-3 py-1.5 rounded-full shadow-md transition-all duration-150"
+            className="pointer-events-auto flex items-center gap-1 bg-orange-500 hover:bg-orange-400 active:scale-95 text-black text-xs font-semibold px-3 py-1.5 rounded-full shadow-md shadow-orange-500/20 transition-all duration-150"
             onClick={() => {
-              tabScrollRef.current?.scrollTo({ left: tabScrollRef.current.scrollWidth, behavior: 'smooth' });
-              setActiveTab('rss');
+              tabScrollRef.current?.scrollTo({
+                left: tabScrollRef.current.scrollWidth,
+                behavior: "smooth",
+              });
+              setActiveTab("rss");
             }}
           >
             <Rss className="h-3 w-3" />
@@ -282,47 +332,59 @@ export default function AgentDetails() {
       </div>
 
       {/* Tab Content */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        {activeTab === 'overview' && (
+      <div className="bg-[#141414] rounded-xl border border-white/5 p-6">
+        {activeTab === "overview" && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h2>
-              <AgentEditForm 
-                agent={agent} 
+              <h2 className="text-base font-semibold text-white mb-4">
+                Basic Information
+              </h2>
+              <AgentEditForm
+                agent={agent}
                 onSubmit={handleUpdateAgent}
                 isSubmitting={updateAgent.isPending}
               />
             </div>
 
-            <div className="pt-6 border-t border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Channel Details</h2>
+            <div className="pt-6 border-t border-white/5">
+              <h2 className="text-base font-semibold text-white mb-4">
+                Channel Details
+              </h2>
               <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <dt className="text-sm font-medium text-gray-500">YouTube Channel</dt>
-                  <dd className="mt-1 text-sm text-gray-900">
+                  <dt className="text-sm font-medium text-gray-500">
+                    YouTube Channel
+                  </dt>
+                  <dd className="mt-1 text-sm text-white">
                     <a
                       href={agent.youtube_channel_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-700"
+                      className="text-orange-500 hover:text-orange-400"
                     >
                       {agent.youtube_channel_url}
                     </a>
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-sm font-medium text-gray-500">Channel ID</dt>
-                  <dd className="mt-1 text-sm text-gray-900 font-mono">{agent.youtube_channel_id}</dd>
+                  <dt className="text-sm font-medium text-gray-500">
+                    Channel ID
+                  </dt>
+                  <dd className="mt-1 text-sm text-white font-mono text-xs bg-white/5 px-2 py-1 rounded-md inline-block">
+                    {agent.youtube_channel_id}
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Created</dt>
-                  <dd className="mt-1 text-sm text-gray-900">
+                  <dd className="mt-1 text-sm text-white">
                     {new Date(agent.created_at).toLocaleDateString()}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-sm font-medium text-gray-500">Last Updated</dt>
-                  <dd className="mt-1 text-sm text-gray-900">
+                  <dt className="text-sm font-medium text-gray-500">
+                    Last Updated
+                  </dt>
+                  <dd className="mt-1 text-sm text-white">
                     {new Date(agent.updated_at).toLocaleDateString()}
                   </dd>
                 </div>
@@ -330,21 +392,25 @@ export default function AgentDetails() {
             </div>
 
             {/* Danger Zone */}
-            <div className="pt-6 border-t border-gray-200">
-              <h2 className="text-lg font-semibold text-red-700 mb-4">Danger Zone</h2>
-              <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+            <div className="pt-6 border-t border-white/5">
+              <h2 className="text-base font-semibold text-red-400 mb-4">
+                Danger Zone
+              </h2>
+              <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-6">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h3 className="text-sm font-semibold text-gray-900 mb-1">
+                    <h3 className="text-sm font-semibold text-white mb-1">
                       Delete This Channel
                     </h3>
-                    <p className="text-sm text-gray-600">
-                      Permanently remove this YouTube channel and all associated episodes, media files, and settings. This action cannot be undone.
+                    <p className="text-sm text-gray-400">
+                      Permanently remove this YouTube channel and all associated
+                      episodes, media files, and settings. This action cannot be
+                      undone.
                     </p>
                   </div>
                   <button
                     onClick={() => setShowDeleteConfirm(true)}
-                    className="ml-4 inline-flex items-center px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition-colors"
+                    className="ml-4 inline-flex items-center px-4 py-2.5 bg-red-600 text-white text-sm font-semibold rounded-xl hover:bg-red-500 transition-colors"
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
                     Delete Channel
@@ -355,7 +421,7 @@ export default function AgentDetails() {
           </div>
         )}
 
-        {activeTab === 'media' && (
+        {activeTab === "media" && (
           <div className="space-y-8">
             <FileUpload
               label="Podcast Artwork"
@@ -389,24 +455,28 @@ export default function AgentDetails() {
           </div>
         )}
 
-        {activeTab === 'episodes' && (
+        {activeTab === "episodes" && (
           <div>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900 mb-1">
+                <h2 className="text-base font-semibold text-white mb-1">
                   Episodes ({episodes?.length || 0})
                 </h2>
                 {episodes.length > 0 && (
-                  <p className="text-sm text-gray-600">
-                    <span className="text-green-600 font-medium">{episodes.filter(ep => ep.published).length} Published</span>
+                  <p className="text-sm text-gray-500">
+                    <span className="text-green-400 font-medium">
+                      {episodes.filter((ep) => ep.published).length} Published
+                    </span>
                     {" • "}
-                    <span className="text-gray-500">{episodes.filter(ep => !ep.published).length} Draft</span>
+                    <span className="text-gray-500">
+                      {episodes.filter((ep) => !ep.published).length} Draft
+                    </span>
                   </p>
                 )}
               </div>
               <button
                 onClick={() => setShowBackfill(true)}
-                className="inline-flex items-center justify-center w-full sm:w-auto px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+                className="inline-flex items-center justify-center w-full sm:w-auto px-4 py-2.5 bg-orange-500 text-black text-sm font-semibold rounded-xl hover:bg-orange-400 transition-colors shadow-lg shadow-orange-500/20"
               >
                 <Calendar className="h-4 w-4 mr-2" />
                 Import Historical Videos
@@ -416,12 +486,12 @@ export default function AgentDetails() {
             {/* Processing status banners — active jobs + brief completed flash + persistent failed */}
             {visibleJobs.length > 0 && (
               <div className="mb-4 space-y-2">
-                <div className="text-sm text-gray-600 font-medium">
+                <div className="text-sm text-gray-400 font-medium">
                   {backfillManager.activeJobIds.length > 0
                     ? backfillManager.activeJobIds.length === 1
-                      ? 'Import in progress'
+                      ? "Import in progress"
                       : `${backfillManager.activeJobIds.length} imports in progress`
-                    : 'Import complete'}
+                    : "Import complete"}
                 </div>
                 <AnimatedList>
                   {visibleJobs.map((job) => (
@@ -430,12 +500,12 @@ export default function AgentDetails() {
                       status={jobStatuses[job.jobId] ?? null}
                       isLoading={!jobStatuses[job.jobId]}
                       onCancelRequest={
-                        job.status === 'pending' || job.status === 'processing'
+                        job.status === "pending" || job.status === "processing"
                           ? () => setCancelJobId(job.jobId)
                           : undefined
                       }
                       onDismiss={
-                        job.status === 'failed' || job.status === 'completed'
+                        job.status === "failed" || job.status === "completed"
                           ? () => setDismissJobId(job.jobId)
                           : undefined
                       }
@@ -446,55 +516,81 @@ export default function AgentDetails() {
             )}
 
             {episodes.length === 0 ? (
-              <div className="text-center py-12 text-gray-400">
+              <div className="text-center py-12 text-gray-500">
                 {backfillJobs.length > 0 ? (
                   <>
-                    <p className="text-sm font-medium text-gray-500">Videos are being processed</p>
-                    <p className="text-xs mt-1">Episodes will appear here one by one as each video finishes downloading and transcoding. Large videos may take 30–60 minutes each.</p>
+                    <p className="text-sm font-medium text-gray-400">
+                      Videos are being processed
+                    </p>
+                    <p className="text-xs mt-1 text-gray-600">
+                      Episodes will appear here one by one as each video
+                      finishes downloading and transcoding. Large videos may
+                      take 30–60 minutes each.
+                    </p>
                   </>
                 ) : (
-                  <p className="text-sm">No episodes yet. Import videos using the button above to get started.</p>
+                  <p className="text-sm text-gray-500">
+                    No episodes yet. Import videos using the button above to get
+                    started.
+                  </p>
                 )}
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {episodes.map((episode) => (
                   <div
                     key={episode.id}
-                    className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow"
+                    className="bg-white/[0.03] border border-white/5 rounded-xl overflow-hidden hover:border-white/10 transition-all"
                   >
                     <div className="p-4">
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex-1">
-                          <h3 className="font-semibold text-gray-900 mb-1">{episode.title}</h3>
-                          <p className="text-sm text-gray-600 line-clamp-2">{episode.description}</p>
+                          <h3 className="font-semibold text-white mb-1">
+                            {episode.title}
+                          </h3>
+                          <p className="text-sm text-gray-500 line-clamp-2">
+                            {episode.description}
+                          </p>
                         </div>
                         <span
                           className={`ml-4 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
                             episode.published
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-yellow-100 text-yellow-700'
+                              ? "bg-green-500/10 text-green-400 border border-green-500/20"
+                              : "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20"
                           }`}
                         >
                           {episode.published ? (
-                            <><CheckCircle2 className="inline h-3 w-3 mr-1" />Published</>
+                            <>
+                              <CheckCircle2 className="inline h-3 w-3 mr-1" />
+                              Published
+                            </>
                           ) : (
-                            <><FileText className="inline h-3 w-3 mr-1" />Draft</>
+                            <>
+                              <FileText className="inline h-3 w-3 mr-1" />
+                              Draft
+                            </>
                           )}
                         </span>
                       </div>
-                      <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                          <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{new Date(episode.published_at).toLocaleDateString()}</span>
+                      <div className="flex items-center gap-4 mt-2 text-xs text-gray-600">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {new Date(episode.published_at).toLocaleDateString()}
+                        </span>
                         {episode.duration_seconds && (
-                          <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{Math.floor(episode.duration_seconds / 60)} min</span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {Math.floor(episode.duration_seconds / 60)} min
+                          </span>
                         )}
                         <a
                           href={episode.youtube_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-blue-600 hover:text-blue-700"
+                          className="flex items-center gap-1 text-orange-500 hover:text-orange-400"
                         >
-                          <ExternalLink className="h-3 w-3" />YouTube
+                          <ExternalLink className="h-3 w-3" />
+                          YouTube
                         </a>
                       </div>
                     </div>
@@ -515,31 +611,20 @@ export default function AgentDetails() {
           </div>
         )}
 
-        {activeTab === 'rss' && <RssFeedDisplay agentId={agent.id} />}
+        {activeTab === "rss" && <RssFeedDisplay agentId={agent.id} />}
       </div>
 
-      {showBackfill && (() => {
-          const currentSseJob = backfillJobs.find(j => j.jobId === backfillManager.currentJobId) ?? null;
-          return (
-            <BackfillDialog
-              onClose={() => {
-                setShowBackfill(false);
-                backfillManager.resetCurrentJob();
-              }}
-              onSubmit={handleBackfillSubmit}
-              backfillStatus={currentSseJob ? {
-                jobId:           currentSseJob.jobId,
-                status:          currentSseJob.status as any,
-                totalVideos:     currentSseJob.totalVideos,
-                processedVideos: currentSseJob.processedVideos,
-                enqueuedVideos:  currentSseJob.enqueuedVideos,
-                error:           currentSseJob.error,
-              } : null}
-              isSubmitting={backfillManager.isStarting}
-              submitError={backfillManager.startError}
-            />
-          );
-        })()}
+      {showBackfill && (
+        <BackfillDialog
+          onClose={() => {
+            setShowBackfill(false);
+            backfillManager.resetCurrentJob();
+          }}
+          onSubmit={handleBackfillSubmit}
+          isSubmitting={backfillManager.isStarting}
+          submitError={backfillManager.startError}
+        />
+      )}
 
       <ConfirmDialog
         isOpen={!!cancelJobId}
@@ -548,7 +633,10 @@ export default function AgentDetails() {
         confirmLabel="Yes, Cancel Import"
         cancelLabel="Keep Running"
         variant="danger"
-        onConfirm={() => { handleCancelBackfill(cancelJobId!); setCancelJobId(null); }}
+        onConfirm={() => {
+          handleCancelBackfill(cancelJobId!);
+          setCancelJobId(null);
+        }}
         onCancel={() => setCancelJobId(null)}
       />
 
@@ -560,11 +648,12 @@ export default function AgentDetails() {
         cancelLabel="Keep Visible"
         variant="info"
         onConfirm={() => {
-          const job = backfillJobs.find(j => j.jobId === dismissJobId);
-          setDismissedFailedIds(prev => new Set(prev).add(dismissJobId!));
-          if (job?.status === 'completed') {
+          const job = backfillJobs.find((j) => j.jobId === dismissJobId);
+          setDismissedFailedIds((prev) => new Set(prev).add(dismissJobId!));
+          if (job?.status === "completed") {
             refetchEpisodes();
-            if (dismissJobId === backfillManager.currentJobId) backfillManager.resetCurrentJob();
+            if (dismissJobId === backfillManager.currentJobId)
+              backfillManager.resetCurrentJob();
           }
           setDismissJobId(null);
         }}
@@ -573,24 +662,29 @@ export default function AgentDetails() {
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-[#141414] rounded-xl border border-white/10 shadow-2xl max-w-md w-full mx-4">
             <div className="p-6">
               <div className="flex items-center gap-4 mb-4">
-                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-                  <AlertTriangle className="h-6 w-6 text-red-600" />
+                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+                  <AlertTriangle className="h-6 w-6 text-red-500" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900">Delete Channel?</h3>
-                  <p className="text-sm text-gray-600">This action cannot be undone</p>
+                  <h3 className="text-lg font-bold text-white">
+                    Delete Channel?
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    This action cannot be undone
+                  </p>
                 </div>
               </div>
 
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-gray-700 mb-2">
-                  <strong className="text-gray-900">"{agent.name}"</strong> and all associated data will be permanently deleted:
+              <div className="mb-6 p-4 bg-red-500/5 border border-red-500/15 rounded-xl">
+                <p className="text-sm text-gray-400 mb-2">
+                  <strong className="text-white">"{agent.name}"</strong> and all
+                  associated data will be permanently deleted:
                 </p>
-                <ul className="text-sm text-gray-700 space-y-1 ml-4 list-disc">
+                <ul className="text-sm text-gray-400 space-y-1 ml-4 list-disc">
                   <li>All podcast episodes</li>
                   <li>Media files (artwork, intro, outro)</li>
                   <li>RSS feed configuration</li>
@@ -602,14 +696,14 @@ export default function AgentDetails() {
                 <button
                   onClick={() => setShowDeleteConfirm(false)}
                   disabled={deleteAgent.isPending}
-                  className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium disabled:opacity-50"
+                  className="flex-1 px-4 py-2.5 bg-white/5 border border-white/10 text-gray-300 rounded-xl hover:bg-white/10 transition-colors font-medium disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleDelete}
                   disabled={deleteAgent.isPending}
-                  className="flex-1 inline-flex items-center justify-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium disabled:opacity-50"
+                  className="flex-1 inline-flex items-center justify-center px-4 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-500 transition-colors font-medium disabled:opacity-50"
                 >
                   {deleteAgent.isPending ? (
                     <>

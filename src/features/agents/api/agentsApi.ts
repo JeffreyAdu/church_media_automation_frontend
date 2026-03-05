@@ -1,10 +1,15 @@
-import { apiClient } from '../../../shared/utils/api';
-import type { Agent, CreateAgentInput, UpdateAgentInput, Episode } from '../../../shared/types';
+import { apiClient } from "../../../shared/utils/api";
+import type {
+  Agent,
+  CreateAgentInput,
+  UpdateAgentInput,
+  Episode,
+} from "../../../shared/types";
 
 export const agentsApi = {
   // Get all agents
   getAgents: async (): Promise<Agent[]> => {
-    const { data } = await apiClient.get('/agents');
+    const { data } = await apiClient.get("/agents");
     return data;
   },
 
@@ -16,7 +21,7 @@ export const agentsApi = {
 
   // Create agent
   createAgent: async (input: CreateAgentInput): Promise<Agent> => {
-    const { data } = await apiClient.post('/agents', input);
+    const { data } = await apiClient.post("/agents", input);
     return data;
   },
 
@@ -45,11 +50,14 @@ export const agentsApi = {
   },
 
   // Upload artwork
-  uploadArtwork: async (id: string, file: File): Promise<{ podcast_artwork_url: string }> => {
+  uploadArtwork: async (
+    id: string,
+    file: File,
+  ): Promise<{ podcast_artwork_url: string }> => {
     const formData = new FormData();
-    formData.append('image', file);
+    formData.append("image", file);
     const { data } = await apiClient.post(`/agents/${id}/artwork`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+      headers: { "Content-Type": "multipart/form-data" },
     });
     return data;
   },
@@ -60,11 +68,14 @@ export const agentsApi = {
   },
 
   // Upload intro
-  uploadIntro: async (id: string, file: File): Promise<{ intro_audio_url: string }> => {
+  uploadIntro: async (
+    id: string,
+    file: File,
+  ): Promise<{ intro_audio_url: string }> => {
     const formData = new FormData();
-    formData.append('audio', file);
+    formData.append("audio", file);
     const { data } = await apiClient.post(`/agents/${id}/intro`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+      headers: { "Content-Type": "multipart/form-data" },
     });
     return data;
   },
@@ -75,11 +86,14 @@ export const agentsApi = {
   },
 
   // Upload outro
-  uploadOutro: async (id: string, file: File): Promise<{ outro_audio_url: string }> => {
+  uploadOutro: async (
+    id: string,
+    file: File,
+  ): Promise<{ outro_audio_url: string }> => {
     const formData = new FormData();
-    formData.append('audio', file);
+    formData.append("audio", file);
     const { data } = await apiClient.post(`/agents/${id}/outro`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+      headers: { "Content-Type": "multipart/form-data" },
     });
     return data;
   },
@@ -95,13 +109,19 @@ export const agentsApi = {
   },
 
   // Backfill videos
-  backfillVideos: async (id: string, since: string): Promise<{ jobId: string; status: string }> => {
+  backfillVideos: async (
+    id: string,
+    since: string,
+  ): Promise<{ jobId: string; status: string }> => {
     const { data } = await apiClient.post(`/agents/${id}/backfill`, { since });
     return data;
   },
 
   // Get backfill job status
-  getBackfillStatus: async (id: string, jobId: string): Promise<{
+  getBackfillStatus: async (
+    id: string,
+    jobId: string,
+  ): Promise<{
     jobId: string;
     status: string;
     totalVideos: number;
@@ -121,26 +141,26 @@ export const agentsApi = {
     createdAt: string;
     updatedAt: string;
   }> => {
-    console.log(`[agentsApi] 📡 GET /agents/${id}/backfill/${jobId}`);
     const { data } = await apiClient.get(`/agents/${id}/backfill/${jobId}`);
-    console.log(`[agentsApi] ✅ Response for job ${jobId}:`, data);
     return data;
   },
 
   // Get all backfill jobs for agent
-  getAgentBackfillJobs: async (id: string): Promise<Array<{
-    jobId: string;
-    status: string;
-    totalVideos: number;
-    processedVideos: number;
-    enqueuedVideos: number;
-    error: string | null;
-    createdAt: string;
-    updatedAt: string;
-  }>> => {
-    console.log(`[agentsApi] 📡 GET /agents/${id}/backfill`);
+  getAgentBackfillJobs: async (
+    id: string,
+  ): Promise<
+    Array<{
+      jobId: string;
+      status: string;
+      totalVideos: number;
+      processedVideos: number;
+      enqueuedVideos: number;
+      error: string | null;
+      createdAt: string;
+      updatedAt: string;
+    }>
+  > => {
     const { data } = await apiClient.get(`/agents/${id}/backfill`);
-    console.log(`[agentsApi] ✅ Response - ${data.length} backfill jobs:`, data);
     return data;
   },
 
@@ -161,7 +181,7 @@ export const agentsApi = {
 
   // Get total episode count
   getEpisodeCount: async (): Promise<number> => {
-    const { data } = await apiClient.get('/stats/dashboard');
+    const { data } = await apiClient.get("/stats/dashboard");
     return data.totalEpisodes ?? 0;
   },
 };

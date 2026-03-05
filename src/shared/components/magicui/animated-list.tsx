@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { AnimatePresence, motion } from 'framer-motion';
-import { cn } from '@/lib/utils';
+import { AnimatePresence, motion } from "framer-motion";
+import { cn } from "@/shared/utils/classnames";
 
 interface AnimatedListProps {
   className?: string;
@@ -18,15 +18,20 @@ interface AnimatedListProps {
  *     {jobs.map(job => <JobCard key={job.id} job={job} />)}
  *   </AnimatedList>
  */
-export function AnimatedList({ className, children, delay = 0 }: AnimatedListProps) {
+export function AnimatedList({
+  className,
+  children,
+  delay = 0,
+}: AnimatedListProps) {
   const items = Array.isArray(children) ? children : [children];
 
   return (
-    <div className={cn('flex flex-col gap-3', className)}>
+    <div className={cn("flex flex-col gap-3", className)}>
       <AnimatePresence initial={false}>
         {items.map((child, i) => {
           if (!child) return null;
-          const key = (child as React.ReactElement<{ key?: React.Key }>).key ?? i;
+          const key =
+            (child as React.ReactElement<{ key?: React.Key }>).key ?? i;
           return (
             <motion.div
               key={key}
@@ -34,7 +39,7 @@ export function AnimatedList({ className, children, delay = 0 }: AnimatedListPro
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }}
               transition={{
-                type: 'spring',
+                type: "spring",
                 stiffness: 350,
                 damping: 40,
                 delay: i === 0 ? delay / 1000 : 0,

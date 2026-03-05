@@ -1,6 +1,6 @@
-import { useAuth } from '../contexts/AuthContext';
-import { LogOut, User, Menu } from 'lucide-react';
-import { useState } from 'react';
+import { useAuth } from "../contexts/AuthContext";
+import { LogOut, Menu, ChevronDown } from "lucide-react";
+import { useState } from "react";
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -14,56 +14,73 @@ export default function Header({ onMenuClick }: HeaderProps) {
     try {
       await signOut();
     } catch (error) {
-      console.error('Error signing out:', error);
+      console.error("Error signing out:", error);
     }
   };
 
+  const displayName = user?.user_metadata?.first_name
+    ? `${user.user_metadata.first_name} ${user.user_metadata.last_name || ""}`.trim()
+    : user?.email?.split("@")[0] || "User";
+
+  const initials = user?.user_metadata?.first_name
+    ? `${user.user_metadata.first_name[0]}${(user.user_metadata.last_name?.[0] || "").toUpperCase()}`
+    : displayName[0]?.toUpperCase() || "U";
+
   return (
-    <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-6">
+    <header className="h-16 bg-[#0a0a0a] border-b border-white/5 flex items-center justify-between px-4 sm:px-6">
       {/* Mobile menu button */}
       <button
         onClick={onMenuClick}
-        className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+        className="lg:hidden p-2 rounded-lg hover:bg-white/5 transition-colors"
         aria-label="Open menu"
       >
-        <Menu className="h-6 w-6 text-gray-600" />
+        <Menu className="h-6 w-6 text-gray-400" />
       </button>
 
-      <h2 className="text-base sm:text-lg font-semibold text-gray-900">Podcast Automation</h2>
-      
-      <div className="flex items-center space-x-2 sm:space-x-4">
-        <div className="hidden sm:block text-sm text-gray-600">
+      <div className="hidden lg:block" />
+
+      <div className="flex items-center gap-3">
+        <span className="hidden sm:block text-sm text-gray-500">
           Welcome back!
-        </div>
+        </span>
         <div className="relative">
           <button
             onClick={() => setShowDropdown(!showDropdown)}
-            className="flex items-center gap-2 px-2 sm:px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+            className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-white/5 transition-colors border border-transparent hover:border-white/10"
           >
-            <User className="h-5 w-5 text-gray-600" />
-            <span className="hidden sm:inline text-sm font-medium text-gray-700">
-              {user?.email?.split('@')[0] || 'User'}
+            <div className="w-8 h-8 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
+              <span className="text-xs font-semibold text-orange-500">
+                {initials}
+              </span>
+            </div>
+            <span className="hidden sm:inline text-sm font-medium text-gray-300">
+              {displayName}
             </span>
+            <ChevronDown className="hidden sm:block h-4 w-4 text-gray-500" />
           </button>
-          
+
           {showDropdown && (
             <>
               <div
                 className="fixed inset-0 z-10"
                 onClick={() => setShowDropdown(false)}
               />
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
-                <div className="px-4 py-2 border-b border-gray-200">
+              <div className="absolute right-0 mt-2 w-72 bg-[#141414] rounded-xl shadow-2xl shadow-black/40 border border-white/10 py-1 z-20">
+                <div className="px-4 py-3 border-b border-white/5">
                   <p className="text-xs text-gray-500">Signed in as</p>
-                  <p className="text-sm font-medium text-gray-900 truncate">{user?.email}</p>
+                  <p className="text-sm font-medium text-white break-all mt-0.5">
+                    {user?.email}
+                  </p>
                 </div>
-                <button
-                  onClick={handleSignOut}
-                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                >
-                  <LogOut className="h-4 w-4" />
-                  Sign out
-                </button>
+                <div className="py-1">
+                  <button
+                    onClick={handleSignOut}
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sign out
+                  </button>
+                </div>
               </div>
             </>
           )}

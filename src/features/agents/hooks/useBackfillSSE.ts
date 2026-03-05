@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
-import { agentsApi } from '../api/agentsApi';
+import { useEffect, useRef, useState } from "react";
+import { agentsApi } from "../api/agentsApi";
+import { supabase } from "../../../shared/lib/supabase";
 
 export interface FailedVideoSummary {
   videoId: string;
@@ -48,37 +49,57 @@ export function useBackfillSSE(agentId: string): UseBackfillSSEResult {
   useEffect(() => {
     if (!agentId) return;
 
-    const url = agentsApi.getBackfillStreamUrl(agentId);
-    const es = new EventSource(url);
-    esRef.current = es;
+    let es: EventSource | null = null;
 
-    es.onopen = () => setIsConnected(true);
-    es.onerror = () => setIsConnected(false);
+    const openConnection = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      const baseUrl = agentsApi.getBackfillStreamUrl(agentId);
+      const url = token
+        ? `${baseUrl}?token=${encodeURIComponent(token)}`
+        : baseUrl;
+      es = new EventSource(url);
+      esRef.current = es;
 
-    es.onmessage = (event: MessageEvent) => {
-      const msg = JSON.parse(event.data);
+      es.onopen = () => setIsConnected(true);
+      es.onerror = () => setIsConnected(false);
 
-      if (msg.type === 'connected') {
-        setIsConnected(true);
-      } else if (msg.type === 'snapshot') {
-        setJobs(msg.jobs as BackfillJobSummary[]);
-      } else if (msg.type === 'jobUpdate') {
-        const incoming = msg.job as Partial<BackfillJobSummary> & { jobId: string };
-        setJobs((prev) => {
-          const idx = prev.findIndex((j) => j.jobId === incoming.jobId);
-          if (idx === -1) {
-            // New job — prepend to list
-            return [incoming as BackfillJobSummary, ...prev];
-          }
-          const updated = [...prev];
-          updated[idx] = { ...updated[idx], ...incoming };
-          return updated;
-        });
-      }
+      es.onmessage = (event: MessageEvent) => {
+        let msg;
+        try {
+          msg = JSON.parse(event.data);
+        } catch {
+          return; // Malformed frame — ignore
+        }
+
+        if (msg.type === "connected") {
+          setIsConnected(true);
+        } else if (msg.type === "snapshot") {
+          setJobs(msg.jobs as BackfillJobSummary[]);
+        } else if (msg.type === "jobUpdate") {
+          const incoming = msg.job as Partial<BackfillJobSummary> & {
+            jobId: string;
+          };
+          setJobs((prev) => {
+            const idx = prev.findIndex((j) => j.jobId === incoming.jobId);
+            if (idx === -1) {
+              // New job — prepend to list
+              return [incoming as BackfillJobSummary, ...prev];
+            }
+            const updated = [...prev];
+            updated[idx] = { ...updated[idx], ...incoming };
+            return updated;
+          });
+        }
+      };
     };
 
+    openConnection();
+
     return () => {
-      es.close();
+      if (es) es.close();
       esRef.current = null;
       setIsConnected(false);
     };

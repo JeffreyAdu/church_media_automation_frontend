@@ -8,21 +8,47 @@
   box-sizing: border-box;
 }
 
-/* Thin custom scrollbar for video lists */
-.scrollbar-thin::-webkit-scrollbar        { width: 4px; }
-.scrollbar-thin::-webkit-scrollbar-track  { background: transparent; }
-.scrollbar-thin::-webkit-scrollbar-thumb  { background: #e4e4e7; border-radius: 9999px; }
-.scrollbar-thin::-webkit-scrollbar-thumb:hover { background: #a1a1aa; }
+html {
+  scroll-behavior: smooth;
+}
 
-.scrollbar-none          { scrollbar-width: none; }
-.scrollbar-none::-webkit-scrollbar { display: none; }
+/* Thin custom scrollbar for video lists */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #e4e4e7;
+  border-radius: 9999px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #a1a1aa;
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
 
 body {
   margin: 0;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-feature-settings: "rlig" 1, "calt" 1;
+  font-feature-settings:
+    "rlig" 1,
+    "calt" 1;
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
+}
+
+/* react-day-picker dark theme overrides */
+.rdp-dark .rdp-month_caption {
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }

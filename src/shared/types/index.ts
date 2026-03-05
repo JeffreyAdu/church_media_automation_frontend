@@ -34,7 +34,7 @@ export interface Episode {
 export interface CreateAgentInput {
   name: string;
   youtube_channel_url: string;
-  rss_slug: string;
+  rss_slug?: string;
   podcast_title?: string;
   podcast_description?: string;
   podcast_author?: string;
