@@ -89,12 +89,15 @@ export default function ForgotPassword() {
             <div className="w-10 h-10 rounded-xl shadow-lg shadow-orange-500/20 group-hover:scale-110 transition-transform">
               <img
                 src="/images/favicon-32x32.png"
-                alt="PodcastFlow"
+                alt="PodcastFlow AI"
                 className="w-10 h-10 rounded-xl"
               />
             </div>
             <span className="text-2xl font-bold text-white">
               Podcast<span className="text-orange-500">Flow</span>
+              <span className="text-orange-400 text-sm ml-1 font-semibold">
+                AI
+              </span>
             </span>
           </Link>
         </motion.div>

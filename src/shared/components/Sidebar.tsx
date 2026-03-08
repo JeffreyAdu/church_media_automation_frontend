@@ -20,11 +20,14 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="h-16 flex items-center gap-2.5 px-6 border-b border-white/5">
           <img
             src="/images/favicon-32x32.png"
-            alt="PodcastFlow"
+            alt="PodcastFlow AI"
             className="w-8 h-8 rounded-lg"
           />
           <h1 className="text-lg font-bold text-white tracking-tight">
             Podcast<span className="text-orange-500">Flow</span>
+            <span className="text-orange-400 text-sm ml-1 font-semibold">
+              AI
+            </span>
           </h1>
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1">
@@ -60,11 +63,14 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           <div className="flex items-center gap-2.5">
             <img
               src="/images/favicon-32x32.png"
-              alt="PodcastFlow"
+              alt="PodcastFlow AI"
               className="w-8 h-8 rounded-lg"
             />
             <h1 className="text-lg font-bold text-white tracking-tight">
               Podcast<span className="text-orange-500">Flow</span>
+              <span className="text-orange-400 text-sm ml-1 font-semibold">
+                AI
+              </span>
             </h1>
           </div>
           <button

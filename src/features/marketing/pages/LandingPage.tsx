@@ -217,12 +217,15 @@ export default function LandingPage() {
             >
               <img
                 src="/images/favicon-32x32.png"
-                alt="PodcastFlow"
+                alt="PodcastFlow AI"
                 className="w-8 h-8 rounded-lg"
               />
             </motion.div>
             <span className="text-lg font-bold tracking-tight">
               Podcast<span className="text-orange-500">Flow</span>
+              <span className="text-orange-400 text-sm ml-1 font-semibold">
+                AI
+              </span>
             </span>
           </Link>
 
@@ -405,7 +408,7 @@ export default function LandingPage() {
               className="inline-flex items-center gap-2 px-4 py-1.5 bg-orange-500/10 border border-orange-500/20 rounded-full text-orange-400 text-sm font-semibold mb-6"
             >
               <Zap className="h-4 w-4" />
-              YouTube-to-Podcast Automation
+              AI-Powered Podcast Creation
             </motion.div>
 
             <motion.h1
@@ -418,7 +421,7 @@ export default function LandingPage() {
               }}
               className="text-5xl sm:text-6xl lg:text-7xl font-extrabold leading-[1.1] mb-6"
             >
-              Podcasts That
+              AI-Crafted
               <br />
               <motion.span
                 initial={{ opacity: 0, x: -30 }}
@@ -426,7 +429,7 @@ export default function LandingPage() {
                 transition={{ duration: 0.6, delay: 0.6 }}
                 className="text-orange-500 inline-block"
               >
-                Stand Out
+                Podcasts
               </motion.span>
             </motion.h1>
 
@@ -436,9 +439,9 @@ export default function LandingPage() {
               transition={{ duration: 0.6, delay: 0.7 }}
               className="text-xl text-gray-400 leading-relaxed max-w-xl mx-auto lg:mx-0 mb-10"
             >
-              Connect your YouTube channel once and let PodcastFlow handle the
-              rest — automatic audio extraction, custom branding, and
-              distribution to every major platform.
+              Connect your YouTube channel once and let the PodcastFlow AI Model
+              handle the rest — intelligent content editing, AI-driven audio
+              enhancement, and automated distribution to every major platform.
             </motion.p>
 
             <motion.div
@@ -576,7 +579,7 @@ export default function LandingPage() {
             transition={{ duration: 0.6, delay: 0.7 }}
             className="hidden sm:inline"
           >
-            Let automation do the heavy lifting.
+            Let our AI do the heavy lifting.
           </motion.span>
           <motion.span
             initial={{ opacity: 0 }}
@@ -585,7 +588,7 @@ export default function LandingPage() {
             transition={{ duration: 0.6, delay: 0.7 }}
             className="sm:hidden"
           >
-            Let automation do the heavy lifting.
+            Let our AI do the heavy lifting.
           </motion.span>
           <motion.div
             animate={{ x: [0, 6, 0] }}
@@ -615,9 +618,10 @@ export default function LandingPage() {
             variants={fadeUp}
             className="text-2xl sm:text-3xl text-gray-300 leading-relaxed"
           >
-            We automatically convert your YouTube videos into podcast episodes
-            and distribute them to every major platform — so you can focus on
-            creating content, not managing feeds.
+            Our PodcastFlow AI Model intelligently transforms your YouTube
+            videos into professionally edited podcast episodes — AI-powered
+            content analysis, smart editing, and automated distribution to every
+            major platform, so you can focus on creating.
           </motion.p>
         </motion.div>
       </section>
@@ -645,8 +649,8 @@ export default function LandingPage() {
               variants={fadeUp}
               className="text-gray-400 text-xl max-w-2xl mx-auto"
             >
-              Three simple steps to go from YouTube uploads to podcast
-              distribution
+              Three AI-powered steps to go from YouTube uploads to
+              professionally edited podcasts
             </motion.p>
           </motion.div>
 
@@ -661,19 +665,19 @@ export default function LandingPage() {
                 step: 1,
                 icon: Youtube,
                 title: "Connect YouTube",
-                desc: "Paste your YouTube channel URL. We detect new uploads automatically and start processing within minutes.",
+                desc: "Paste your YouTube channel URL. Our AI detects new uploads automatically and begins intelligent processing within minutes.",
               },
               {
                 step: 2,
                 icon: Zap,
-                title: "Auto Processing",
-                desc: "Audio is extracted, your custom intro/outro is added, episode metadata is generated — all hands-free.",
+                title: "AI Editing & Enhancement",
+                desc: "The PodcastFlow AI Model analyzes your content, removes unwanted segments like music, cheering, and non-podcast material based on your instructions — then enhances audio to broadcast quality.",
               },
               {
                 step: 3,
                 icon: Rss,
                 title: "Publish Everywhere",
-                desc: "Your RSS feed updates automatically. Submit once to Spotify, Apple Podcasts, Google, and Amazon.",
+                desc: "Your AI-produced episode and RSS feed update automatically. Submit once to Spotify, Apple Podcasts, Google, and Amazon.",
               },
             ].map(({ step, icon: Icon, title, desc }) => (
               <motion.div
@@ -727,7 +731,7 @@ export default function LandingPage() {
               className="inline-flex items-center gap-2 px-4 py-1.5 bg-orange-500/10 border border-orange-500/20 rounded-full text-orange-400 text-sm font-semibold mb-6"
             >
               <Layers className="h-4 w-4" />
-              The Full Pipeline
+              The PodcastFlow AI Pipeline
             </motion.div>
             <motion.h2
               variants={fadeUp}
@@ -740,8 +744,8 @@ export default function LandingPage() {
               variants={fadeUp}
               className="text-gray-400 text-xl max-w-2xl mx-auto"
             >
-              Here's exactly what happens behind the scenes every time you
-              publish a new video.
+              Here's how our AI Model processes every new video — intelligent
+              analysis, editing, and delivery, all fully automated.
             </motion.p>
           </motion.div>
 
@@ -759,50 +763,50 @@ export default function LandingPage() {
             {[
               {
                 icon: Youtube,
-                title: "Video Detected",
-                desc: "Our system monitors your YouTube channel around the clock. The moment a new video goes live, PodcastFlow picks it up automatically — no manual trigger needed.",
+                title: "AI Video Detection",
+                desc: "Our AI monitors your YouTube channel around the clock. The moment a new video goes live, the PodcastFlow AI Model picks it up automatically — no manual trigger needed.",
                 color: "text-red-400",
                 bg: "bg-red-500/10 border-red-500/20",
               },
               {
                 icon: Volume2,
-                title: "Audio Extraction",
-                desc: "High-fidelity audio is separated from the video source at the original bitrate, preserving every detail of your voice and sound design.",
+                title: "AI Audio Extraction",
+                desc: "Our AI Model intelligently separates high-fidelity audio from the video source at the optimal bitrate, preserving every detail of your voice and sound design.",
                 color: "text-blue-400",
                 bg: "bg-blue-500/10 border-blue-500/20",
               },
               {
                 icon: Wand2,
-                title: "Audio Enhancement",
-                desc: "Levels are normalized, loudness is balanced to podcast standards (-16 LUFS), and any low-quality artifacts are cleaned up.",
+                title: "AI Content Editing",
+                desc: "This is where the PodcastFlow AI Model truly shines. It analyzes your full content and intelligently removes music, cheering, audience noise, and any non-podcast segments — based on your initial configuration and custom instructions. The result is clean, podcast-ready audio tailored to your standards.",
                 color: "text-purple-400",
                 bg: "bg-purple-500/10 border-purple-500/20",
               },
               {
                 icon: Music,
-                title: "Branding Applied",
-                desc: "Your custom intro and outro are seamlessly stitched to the audio. Every episode sounds consistent and professional.",
+                title: "AI Audio Enhancement",
+                desc: "Our AI normalizes levels, balances loudness to broadcast standards (-16 LUFS), cleans up artifacts, and seamlessly applies your custom intro and outro — producing a polished, professional episode every time.",
                 color: "text-pink-400",
                 bg: "bg-pink-500/10 border-pink-500/20",
               },
               {
                 icon: FileText,
-                title: "Metadata Generated",
-                desc: "Episode title, description, artwork, and chapter markers are auto-created from your video metadata — ready for every directory.",
+                title: "AI Metadata Generation",
+                desc: "The AI auto-generates episode title, description, artwork, and chapter markers from your video metadata — optimized and ready for every directory.",
                 color: "text-teal-400",
                 bg: "bg-teal-500/10 border-teal-500/20",
               },
               {
                 icon: Rss,
-                title: "RSS Feed Updated",
-                desc: "Your podcast's RSS feed is instantly refreshed with the new episode. Directories pick it up within minutes.",
+                title: "AI Feed Management",
+                desc: "Your podcast's RSS feed is intelligently refreshed with the new AI-edited episode. Directories pick it up within minutes.",
                 color: "text-orange-400",
                 bg: "bg-orange-500/10 border-orange-500/20",
               },
               {
                 icon: Globe,
-                title: "Global Distribution",
-                desc: "The episode goes live on Spotify, Apple Podcasts, Amazon Music, Google Podcasts, and every connected platform — simultaneously.",
+                title: "AI-Powered Distribution",
+                desc: "The AI-produced episode goes live on Spotify, Apple Podcasts, Amazon Music, Google Podcasts, and every connected platform — simultaneously.",
                 color: "text-green-400",
                 bg: "bg-green-500/10 border-green-500/20",
               },
@@ -919,13 +923,14 @@ export default function LandingPage() {
               variants={fadeUp}
               className="text-4xl sm:text-5xl font-extrabold mb-4"
             >
-              Best Tools For
+              AI-Powered Tools For
               <br />
               Your Podcast Growth
             </motion.h2>
             <motion.p variants={fadeUp} className="text-gray-400 mb-10 text-xl">
-              Everything you need to turn your YouTube channel into a thriving
-              podcast — built in from day one.
+              Everything our AI Model needs to turn your YouTube channel into a
+              professionally edited podcast — intelligent editing built in from
+              day one.
             </motion.p>
 
             <motion.div
@@ -937,23 +942,23 @@ export default function LandingPage() {
               {[
                 {
                   icon: Mic,
-                  label: "High-quality audio extraction",
+                  label: "AI-powered audio extraction & editing",
                 },
                 {
                   icon: Rss,
-                  label: "Auto-generated RSS feed",
+                  label: "AI-managed RSS feed",
                 },
                 {
                   icon: Upload,
-                  label: "Custom intro & outro branding",
+                  label: "AI content analysis & smart editing",
                 },
                 {
                   icon: BarChart3,
-                  label: "Episode analytics & tracking",
+                  label: "AI-driven analytics & insights",
                 },
                 {
                   icon: Settings,
-                  label: "Full episode management",
+                  label: "AI-powered episode management",
                 },
               ].map(({ icon: Icon, label }, i) => (
                 <motion.div
@@ -1000,8 +1005,8 @@ export default function LandingPage() {
               variants={fadeUp}
               className="text-gray-400 text-xl max-w-2xl mx-auto"
             >
-              Professional-grade features for content creators who want to reach
-              new audiences
+              Professional-grade AI features for content creators who want to
+              reach new audiences
             </motion.p>
           </motion.div>
 
@@ -1014,33 +1019,33 @@ export default function LandingPage() {
             {[
               {
                 icon: Youtube,
-                title: "Channel Monitoring",
-                desc: "We watch your YouTube channel 24/7 and pick up new uploads instantly.",
+                title: "AI Channel Monitoring",
+                desc: "Our AI watches your YouTube channel 24/7 and picks up new uploads instantly.",
               },
               {
                 icon: Zap,
-                title: "Auto-Processing",
-                desc: "Audio extraction, normalization, and metadata — fully automated.",
+                title: "AI Editing & Processing",
+                desc: "Intelligent content analysis, smart editing to remove unwanted segments, audio enhancement, and metadata — all AI-driven.",
               },
               {
                 icon: Rss,
-                title: "RSS Feed",
-                desc: "Industry-standard feed compatible with every major podcast directory.",
+                title: "AI-Managed RSS Feed",
+                desc: "AI-optimized feed compatible with every major podcast directory.",
               },
               {
                 icon: Upload,
-                title: "Historical Import",
-                desc: "Backfill your entire video archive into podcast form with one click.",
+                title: "AI Historical Import",
+                desc: "Our AI processes your entire video archive into professionally edited podcasts with one click.",
               },
               {
                 icon: Headphones,
-                title: "Custom Branding",
-                desc: "Add your own podcast artwork, intro, and outro to every episode.",
+                title: "AI Audio Production",
+                desc: "The AI Model handles professional-grade audio editing, enhancement, and branding for every episode.",
               },
               {
                 icon: BarChart3,
-                title: "Analytics",
-                desc: "Track episode downloads, listener engagement, and growth trends.",
+                title: "AI Analytics",
+                desc: "AI-powered insights on episode downloads, listener engagement, and growth trends.",
               },
             ].map(({ icon: Icon, title, desc }, i) => (
               <motion.div
@@ -1098,12 +1103,15 @@ export default function LandingPage() {
               <div className="w-8 h-8 rounded-lg">
                 <img
                   src="/images/favicon-32x32.png"
-                  alt="PodcastFlow"
+                  alt="PodcastFlow AI"
                   className="w-8 h-8 rounded-lg"
                 />
               </div>
               <span className="text-lg font-bold">
                 Podcast<span className="text-orange-500">Flow</span>
+                <span className="text-orange-400 text-sm ml-1 font-semibold">
+                  AI
+                </span>
               </span>
             </motion.div>
 
@@ -1148,7 +1156,7 @@ export default function LandingPage() {
 
             {/* Copyright */}
             <p className="text-sm text-gray-600">
-              © {new Date().getFullYear()} PodcastFlow. All rights reserved.
+              © {new Date().getFullYear()} PodcastFlow AI. All rights reserved.
             </p>
           </div>
         </div>
@@ -1294,7 +1302,7 @@ function DistributeSection() {
             variants={fadeUp}
             className="text-gray-400 text-xl max-w-2xl mx-auto"
           >
-            Submit your RSS feed once. PodcastFlow keeps every directory updated
+            Submit your RSS feed once. Our AI keeps every directory updated
             automatically — so you're always where your listeners are.
           </motion.p>
         </motion.div>
@@ -1415,8 +1423,9 @@ function CTASection() {
           variants={fadeUp}
           className="text-gray-400 text-xl mb-10 max-w-2xl mx-auto"
         >
-          Your audience is already listening. Give them another way to consume
-          your content — on the go, at the gym, on their commute.
+          Your audience is already listening. Let our AI give them a
+          professionally edited podcast — on the go, at the gym, on their
+          commute.
         </motion.p>
         <motion.div
           variants={fadeUp}
@@ -1482,13 +1491,13 @@ function TestimonialsSection() {
   const testimonials = [
     {
       quote:
-        "PodcastFlow turned my YouTube channel into a full podcast in under 10 minutes. The automation is incredible — I haven't touched a feed manually since.",
+        "PodcastFlow AI turned my YouTube channel into a professionally edited podcast in under 10 minutes. The AI editing is incredible — it automatically removed all the background music and audience noise, giving me clean, podcast-ready episodes. I haven't touched a thing manually since.",
       name: "Sarah Mitchell",
       role: "Content Creator",
     },
     {
       quote:
-        "We used to spend hours each week converting videos and uploading episodes. Now it's completely hands-free. I'd recommend this to anyone with a YouTube channel.",
+        "We used to spend hours each week manually editing out music, intros, and crowd noise from our videos before uploading as podcasts. PodcastFlow AI handles all of that intelligently — the AI Model edits based on our exact instructions. It's like having a professional audio editor on staff.",
       name: "James Park",
       role: "Media Producer",
     },

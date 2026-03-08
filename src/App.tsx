@@ -59,7 +59,7 @@ function PageLoader() {
         >
           <img
             src="/images/favicon-32x32.png"
-            alt="PodcastFlow"
+            alt="PodcastFlow AI"
             className="w-14 h-14 rounded-xl"
           />
         </div>
@@ -68,6 +68,7 @@ function PageLoader() {
       {/* Brand name */}
       <p className="text-lg font-bold text-white tracking-tight mb-4">
         Podcast<span className="text-orange-500">Flow</span>
+        <span className="text-orange-400 text-sm ml-1 font-semibold">AI</span>
       </p>
 
       {/* Animated bar loader */}

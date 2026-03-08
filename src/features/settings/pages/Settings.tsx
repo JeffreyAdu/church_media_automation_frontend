@@ -317,12 +317,12 @@ export default function Settings() {
           </p>
           <p>
             <span className="text-gray-500">Platform:</span>{" "}
-            <span className="text-white">PodcastFlow</span>
+            <span className="text-white">PodcastFlow AI</span>
           </p>
           <p className="mt-4 leading-relaxed text-gray-500">
-            Automatically convert YouTube videos to podcast episodes with audio
-            processing, RSS feed generation, and distribution to Spotify, Apple
-            Podcasts, and more.
+            AI-powered podcast creation from YouTube — our PodcastFlow AI Model
+            intelligently edits, enhances, and distributes your content to
+            Spotify, Apple Podcasts, and more.
           </p>
         </div>
       </div>
